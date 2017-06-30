@@ -1,0 +1,10 @@
+namespace api.structsz.middcachez;
+
+table CacheHandlersObj {
+  contentType:string;
+  status:int;
+  timed:long;  
+  body:string;
+}
+
+root_type CacheHandlersObj;

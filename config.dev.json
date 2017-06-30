@@ -1,0 +1,13 @@
+{
+  "addr": "127.0.0.1:8888",
+  "headerTokenKey": "X-Access-Token",
+  "rateLimiteAPI":"60:60s",
+  "rateLimiteIP":"8:30s",
+  "headerClientIPs":"X-Forwarded-For,X-Real-Ip",
+  "mongoURL": "mongodb://localhost/app-go-db",
+
+  "secretKey1": "1234567890123456",
+  "secretKey2": "1234567890123456",
+ 
+  "pprof":"0"
+}

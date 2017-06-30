@@ -1,0 +1,30 @@
+<html lang="en" dir="ltr">
+<head>
+<script src="js/flatbuffers.js"></script>
+<script src="js/middCache_generated.js"></script>
+<script src="js/jquery-3.2.1.min.js"></script>
+<script>
+function start(){
+$.get({url:"http://127.0.0.1:8888/user2?X-Access-Token=MTQ5ODQ5NzQ3N3x6NnItY0hDQmMyaXZrS2c0eTduRDNCNzhVbWhFQmVfR2pnOHVKWVhER2l5eXBJczFicG81V1F6RFA4Yz18F9YI7t_OGXU395L68OtlZ7eUizs3x9bwVYtbQvyYcCY=",
+  type: "GET",
+  success: function(d){
+    printData(d);
+  },
+  xhrFields: { responseType: "arraybuffer" },
+  processData: false});
+}
+function printData(d){
+var data = new Uint8Array(d);
+var b = new flatbuffers.ByteBuffer(data);
+var obj = structz.CacheHandlersObj.getRootAsCacheHandlersObj(b);
+console.log(obj.contentType());
+console.log(obj.status());
+console.log(new Date(obj.timed().low * 1000));
+console.log(obj.body());
+}
+</script>
+</head>
+<body onload="start()">
+
+</body>
+</html>
