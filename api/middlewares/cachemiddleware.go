@@ -10,6 +10,7 @@ import (
 	"tls-server/api/types"
 
 	"github.com/boltdb/bolt"
+	"strconv"
 )
 
 // MiddlewareCache provide url resp cache
@@ -81,12 +82,14 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 					obj := middcachez.GetRootAsCacheHandlersObj(bval, 0)
 					if time.Now().Sub(time.Unix(obj.Timed(), 0)) <= expires {
 						rw.Header().Set("Content-Type", string(obj.ContentType()))
-						rw.Header().Set("X-Content", "cached")
 						rw.WriteHeader(int(obj.Status()))
+
 						if wlen, err := rw.Write(obj.Body()); err != nil {
 							cache.ctl.Log().Error("MiddlewareCache: error ResponseWriter", "err", err)
 						} else {
-							cache.ctl.Log().Debug("MiddlewareCache: serve from cache", "fullPath", r.URL.RequestURI(), "key", string(key), "length", wlen)
+							rw.Header().Set("X-Cache", string(key))
+							rw.Header().Set("X-Bytes", strconv.Itoa(wlen))
+							//cache.ctl.Log().Debug("MiddlewareCache: serve from cache", "fullPath", r.URL.RequestURI(), "key", string(key), "length", wlen)
 							return
 						}
 					}
@@ -100,17 +103,19 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 }
 
 func (cache *CacheMiddleware) RespFlat(rw http.ResponseWriter, r *http.Request, status int, data []byte) {
-	rw.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	rw.Header().Set("Content-Type", "text/plain")
 
 	rw.WriteHeader(status)
-	if _, werr := rw.Write(data); werr != nil {
+	if wlen, werr := rw.Write(data); werr != nil {
 		cache.ctl.Log().Error("MiddlewareCache:  error text response writer", "rwWrite", werr)
 		return
+	}else{
+		rw.Header().Set("X-Bytes", strconv.Itoa(wlen))
 	}
 
 	if k := r.Context().Value(types.CTXKey("cachein")); k != nil && status == 200 {
 		if key, ok := k.([]byte); ok && k != nil {
-			cache.writeCacheHandler(key, status, []byte("text/plain; charset=utf-8"), data)
+			cache.writeCacheHandler(key, status, []byte("text/plain"), data)
 		}
 	}
 }
@@ -126,9 +131,11 @@ func (cache *CacheMiddleware) RespJson(rw http.ResponseWriter, r *http.Request, 
 	}
 
 	rw.WriteHeader(status)
-	if _, werr := rw.Write(b); werr != nil {
+	if wlen, werr := rw.Write(b); werr != nil {
 		cache.ctl.Log().Error("MiddlewareCache:  error json response writer", "rwWrite", werr)
 		return
+	}else{
+		rw.Header().Set("X-Bytes", strconv.Itoa(wlen))
 	}
 
 	if k := r.Context().Value(types.CTXKey("cachein")); k != nil && status == 200 {
@@ -163,8 +170,9 @@ func (cache *CacheMiddleware) logInfo() {
 	cache.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(cache.chBucket))
 		c := b.Cursor()
-		for k, v := c.First(); k != nil; k, v = c.Next() {
-			cache.ctl.Log().Info("row: ", "K", string(k), "V", string(v))
+		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+			//fmt.Println("row: ", "K", string(k), "V", string(v))
+			cache.ctl.Log().Info("row: ", "Key", string(k))
 		}
 		return nil
 	})

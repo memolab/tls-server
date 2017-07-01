@@ -14,6 +14,7 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/mgo.v2"
+	"strconv"
 )
 
 type APICtl struct {
@@ -44,20 +45,25 @@ func InitAPI(config map[string]string) *http.ServeMux {
 		log:      log,
 	}
 
+	middlewares.InitGlobalDumpDB(config["dumpDB"])
+
+	// new FrontMiddleware
+	frontMiddleware := middlewares.NewFrontMiddleware(c, config["accessLogsDump"])
+	middFront := frontMiddleware.Handler()
+	c.regMidd["front"] = frontMiddleware
+
 	// new CacheMiddleware
 	cacheMiddleware := middlewares.NewCacheMiddleware(c)
 	c.regMidd["cache"] = cacheMiddleware
 
 	// new AuthMiddleware
 	authMiddleware := middlewares.NewAuthMiddleware(c, config["headerTokenKey"], config["rateLimiteAPI"],
-		config["secretKey1"], config["secretKey2"])
+		config["secretKey1"], config["secretKey2"], config["rateLimiteLogsDump"])
 	c.regMidd["auth"] = authMiddleware
 	middAuth := authMiddleware.Handler()
 	middRateLimitIP := authMiddleware.RateLimitIPHandler(config["headerClientIPs"], config["rateLimiteIP"])
 
-	// new FrontMiddleware
-	frontMiddleware := middlewares.NewFrontMiddleware(c)
-	middFront := frontMiddleware.Handler()
+
 
 	mux := http.NewServeMux()
 	d5min, _ := time.ParseDuration("5m")
@@ -125,8 +131,10 @@ func (c *APICtl) RespJson(rw http.ResponseWriter, status int, data interface{}) 
 	}
 
 	rw.WriteHeader(status)
-	if _, werr := rw.Write(b); werr != nil {
+	if wlen, werr := rw.Write(b); werr != nil {
 		c.log.Error("Error json response writer", "rwWrite", werr)
+	}else{
+		rw.Header().Set("X-Bytes", strconv.Itoa(wlen))
 	}
 }
 
@@ -136,10 +144,6 @@ func (c *APICtl) Abort(rw http.ResponseWriter, sts int) {
 
 func (c *APICtl) Log() log.Logger {
 	return c.log
-}
-
-func (c *APICtl) GotAccess() {
-
 }
 
 func newMongo(url string) (*mgo.Session, error) {

@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"fmt"
+	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"runtime/debug"
 	"strconv"
@@ -28,25 +29,76 @@ func (rw *AResponseWriter) WriteHeader(code int) {
 
 type FrontMiddleware struct {
 	ctl        types.APICTL
-	accessLog  map[string]int
-	accessChan chan string
+	AccessLogs []AccessLog
+	accessChan chan AccessLog
+	stopLog    chan bool
 }
 
-func NewFrontMiddleware(ctl types.APICTL) *FrontMiddleware {
+type AccessLog struct {
+	ID               bson.ObjectId `bson:"_id,omitempty"`
+	RemoteAddr       string        `bson:"RemoteAddr"`
+	ReqContentType   string        `bson:"ReqContentType"`
+	RespContentType  string        `bson:"RespContentType"`
+	ReqLength        int64         `bson:"ReqLength"`
+	RespLength       int64         `bson:"RespLength"`
+	Status           int           `bson:"Status"`
+	Path             string        `bson:"Path"`
+	Method           string        `bson:"Method"`
+	Cached           string        `bson:"Cached"`
+	// get time in Nanosecond
+	HandlersDuration time.Duration `bson:"HandlersDuration"`
+	Timed            time.Time     `bson:"Timed"`
+}
+
+func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string) *FrontMiddleware {
+	dumpDuration, err := time.ParseDuration(configAccessLogsDump)
+	if err != nil {
+		ctl.Log().Error("FrontMiddleware: error parsing accessLogsDumpConf duration", "err", err)
+	}
+
 	front := &FrontMiddleware{
 		ctl:        ctl,
-		accessLog:  map[string]int{},
-		accessChan: make(chan string, 200),
+		accessChan: make(chan AccessLog, 200),
+		stopLog:    make(chan bool),
 	}
 
 	go func() {
+		ticker := time.NewTicker(dumpDuration)
+		defer ticker.Stop()
 		for {
-			p := <-front.accessChan
-			front.accessLog[p]++
+			select {
+			case a := <-front.accessChan:
+				front.AccessLogs = append(front.AccessLogs, a)
+			case <-ticker.C:
+				front.dumpLogs()
+			case <-front.stopLog:
+				return
+			}
 		}
 	}()
 
 	return front
+}
+
+func (front *FrontMiddleware) dumpLogs() {
+	if !(len(front.AccessLogs) > 0) {
+		return
+	}
+	dbc := dumpDB.Copy()
+	defer dbc.Close()
+
+	uc := dbc.DB("").C("accessLogs")
+	bulk := uc.Bulk()
+	bulk.Unordered()
+	for _, v := range front.AccessLogs {
+		bulk.Insert(v)
+	}
+	_, err := bulk.Run()
+	if err != nil {
+		front.ctl.Log().Error("FrontMiddleware: error db dumpLogs", "err", err)
+	}
+
+	front.AccessLogs = nil
 }
 
 func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
@@ -73,42 +125,28 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 			}()
 
 			next.ServeHTTP(rw, r)
-			front.accessChan <- (r.URL.Path + ":" + strconv.Itoa(rw.status))
 
-			colr := ""
-			switch rw.status {
-			case 500:
-				colr = "\x1b[31;1m"
-			case 400: // StatusBadRequest
-			case 405: // StatusMethodNotAllowed
-			case 406: // StatusNotAcceptable
-			case 429: // StatusTooManyRequests
-				colr = "\x1b[35;1m"
-			case 404: // StatusNotFound
-				colr = "\x1b[33;1m"
-			case 401: // StatusUnauthorized
-			case 403: // StatusForbidden
-				colr = "\x1b[36;1m"
-			case 200: // ok
-				colr = "\x1b[34;1m"
-			default:
-				colr = "\x1b[34;1m"
-			}
-
-			fmt.Printf("%s%s %s %s %d [%v]\x1b[0m\n", colr, r.RemoteAddr, r.Method, r.URL.String(), rw.status, time.Since(sTime))
+			respLength, _ := strconv.Atoi(rw.Header().Get("X-Bytes"))
+			front.accessChan <- AccessLog{RemoteAddr: r.RemoteAddr,
+				ReqContentType:  r.Header.Get("Content-Type"),
+				RespContentType: rw.Header().Get("Content-Type"),
+				ReqLength:       r.ContentLength,
+				RespLength:      int64(respLength),
+				Status:          rw.status,
+				Path:            r.URL.RequestURI(),
+				Method:          r.Method,
+				Cached:           rw.Header().Get("X-Cache"),
+				HandlersDuration: time.Since(sTime),
+				Timed:            sTime}
 		})
 	}
 }
 
 func (front *FrontMiddleware) logInfo() {
-	t := 0
-	for _, i := range front.accessLog {
-		t += i
-	}
-	front.ctl.Log().Info("accessLog:", "total", t, "urls", front.accessLog)
-
+	front.ctl.Log().Info("FrontMiddleware Log:", "clients", front.AccessLogs)
 }
 
 func (front *FrontMiddleware) Shutdown() {
 	front.logInfo()
+	front.stopLog <- true
 }

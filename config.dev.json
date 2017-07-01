@@ -1,8 +1,11 @@
 {
   "addr": "127.0.0.1:8888",
+  "dumpDB":"mongodb://localhost/app-go-db-logsDump",
+  "accessLogsDump":"30s",
   "headerTokenKey": "X-Access-Token",
   "rateLimiteAPI":"60:60s",
   "rateLimiteIP":"8:30s",
+  "rateLimiteLogsDump":"70s",
   "headerClientIPs":"X-Forwarded-For,X-Real-Ip",
   "mongoURL": "mongodb://localhost/app-go-db",
 
