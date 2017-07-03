@@ -3,8 +3,7 @@ package types
 import (
 	"net/http"
 
-	log "gopkg.in/inconshreveable/log15.v2"
-
+	"go.uber.org/zap"
 )
 
 type (
@@ -25,6 +24,6 @@ type (
 	APICTL interface {
 		RespJson(http.ResponseWriter, int, interface{})
 		Abort(http.ResponseWriter, int)
-		Log() log.Logger
+		Log() *zap.Logger
 	}
 )

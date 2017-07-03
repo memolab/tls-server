@@ -2,24 +2,36 @@ package middlewares
 
 import (
 	"fmt"
-	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"runtime/debug"
-	"strconv"
+	"strings"
 	"time"
+
+	"go.uber.org/zap"
+
 	"tls-server/api/types"
+
+	"gopkg.in/mgo.v2/bson"
 )
 
 // AResponseWriter custom impl of HttpResponseWriter
 type AResponseWriter struct {
 	http.ResponseWriter
 	status int
+	length int
 }
 
 // Header impl of httpResponseWriter
-/*func (rw *AResponseWriter) Header() http.Header {
+func (rw *AResponseWriter) Header() http.Header {
 	return rw.ResponseWriter.Header()
-}*/
+}
+
+// Header impl of httpResponseWriter
+func (rw *AResponseWriter) Write(b []byte) (i int, e error) {
+	i, e = rw.ResponseWriter.Write(b)
+	rw.length = i
+	return
+}
 
 // WriteHeader impl of httpResponseWriter
 func (rw *AResponseWriter) WriteHeader(code int) {
@@ -35,16 +47,16 @@ type FrontMiddleware struct {
 }
 
 type AccessLog struct {
-	ID               bson.ObjectId `bson:"_id,omitempty"`
-	RemoteAddr       string        `bson:"RemoteAddr"`
-	ReqContentType   string        `bson:"ReqContentType"`
-	RespContentType  string        `bson:"RespContentType"`
-	ReqLength        int64         `bson:"ReqLength"`
-	RespLength       int64         `bson:"RespLength"`
-	Status           int           `bson:"Status"`
-	Path             string        `bson:"Path"`
-	Method           string        `bson:"Method"`
-	Cached           string        `bson:"Cached"`
+	ID              bson.ObjectId `bson:"_id,omitempty"`
+	RemoteAddr      string        `bson:"RemoteAddr"`
+	ReqContentType  string        `bson:"ReqContentType"`
+	RespContentType string        `bson:"RespContentType"`
+	ReqLength       int           `bson:"ReqLength"`
+	RespLength      int           `bson:"RespLength"`
+	Status          int           `bson:"Status"`
+	Path            string        `bson:"Path"`
+	Method          string        `bson:"Method"`
+	Cached          string        `bson:"Cached"`
 	// get time in Nanosecond
 	HandlersDuration time.Duration `bson:"HandlersDuration"`
 	Timed            time.Time     `bson:"Timed"`
@@ -53,7 +65,7 @@ type AccessLog struct {
 func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string) *FrontMiddleware {
 	dumpDuration, err := time.ParseDuration(configAccessLogsDump)
 	if err != nil {
-		ctl.Log().Error("FrontMiddleware: error parsing accessLogsDumpConf duration", "err", err)
+		ctl.Log().Error("FrontMiddleware: error parsing accessLogsDumpConf duration", zap.Error(err))
 	}
 
 	front := &FrontMiddleware{
@@ -93,9 +105,9 @@ func (front *FrontMiddleware) dumpLogs() {
 	for _, v := range front.AccessLogs {
 		bulk.Insert(v)
 	}
-	_, err := bulk.Run()
-	if err != nil {
-		front.ctl.Log().Error("FrontMiddleware: error db dumpLogs", "err", err)
+
+	if _, err := bulk.Run(); err != nil {
+		front.ctl.Log().Error("FrontMiddleware: error db dumpLogs", zap.Error(err))
 	}
 
 	front.AccessLogs = nil
@@ -104,7 +116,7 @@ func (front *FrontMiddleware) dumpLogs() {
 func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(_rw http.ResponseWriter, r *http.Request) {
-			sTime := time.Now()
+			sTime := time.Now().UTC()
 
 			rw := &AResponseWriter{ResponseWriter: _rw, status: -1}
 			rw.Header().Set("Cache-Control", "no-cache, private")
@@ -117,33 +129,36 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 
 			defer func() {
 				if err := recover(); err != nil {
-					front.ctl.Log().Error("-- RECOVER PANIC --", "err", err)
-					fmt.Printf("\x1b[31;1m -- RECOVER PANIC -- %s \x1b[0m\n", err)
+					front.ctl.Log().Error("-- RECOVER PANIC --", zap.Any("PANIC ERR", err))
+					fmt.Printf("\x1b[31;1m -- RECOVER PANIC Stack-- %s \x1b[0m\n", err)
 					fmt.Printf("\x1b[31;1m -- %s --- \x1b[0m\n", debug.Stack())
+					fmt.Println("\x1b[31;1m -- --- --- \x1b[0m")
 					http.Error(rw, "Internal Server Error", 500)
 				}
 			}()
 
 			next.ServeHTTP(rw, r)
 
-			respLength, _ := strconv.Atoi(rw.Header().Get("X-Bytes"))
-			front.accessChan <- AccessLog{RemoteAddr: r.RemoteAddr,
-				ReqContentType:  r.Header.Get("Content-Type"),
-				RespContentType: rw.Header().Get("Content-Type"),
-				ReqLength:       r.ContentLength,
-				RespLength:      int64(respLength),
-				Status:          rw.status,
-				Path:            r.URL.RequestURI(),
-				Method:          r.Method,
+			front.accessChan <- AccessLog{RemoteAddr: strings.Split(r.RemoteAddr, ":")[0],
+				ReqContentType:   r.Header.Get("Content-Type"),
+				RespContentType:  rw.Header().Get("Content-Type"),
+				ReqLength:        int(r.ContentLength),
+				RespLength:       rw.length,
+				Status:           rw.status,
+				Path:             r.URL.RequestURI(),
+				Method:           r.Method,
 				Cached:           rw.Header().Get("X-Cache"),
 				HandlersDuration: time.Since(sTime),
 				Timed:            sTime}
+
+			front.ctl.Log().Info(r.URL.RequestURI(), zap.Int("status", rw.status),
+				zap.Duration("HandlersDuration", time.Since(sTime)))
 		})
 	}
 }
 
 func (front *FrontMiddleware) logInfo() {
-	front.ctl.Log().Info("FrontMiddleware Log:", "clients", front.AccessLogs)
+	front.ctl.Log().Info("FrontMiddleware Log:", zap.Any("clients", front.AccessLogs))
 }
 
 func (front *FrontMiddleware) Shutdown() {

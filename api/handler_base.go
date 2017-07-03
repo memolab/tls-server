@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"net/http"
 
-	"tls-server/api/types"
+	"go.uber.org/zap"
+
 	"tls-server/api/middlewares"
+	"tls-server/api/types"
 )
 
 func (c *APICtl) indexHanler(rw http.ResponseWriter, r *http.Request) {
@@ -41,7 +43,7 @@ func (c *APICtl) initDBHanler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := createMongoIndexs(dbc); err != nil {
-		c.log.Error("create mongo indexs", "err", err)
+		c.log.Error("create mongo indexs", zap.Error(err))
 		c.RespJson(rw, 500, map[string]interface{}{"msg": err})
 	}
 

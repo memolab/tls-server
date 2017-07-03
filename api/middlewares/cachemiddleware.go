@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
+
 	"tls-server/api/structsz/middcachez"
 	"tls-server/api/types"
 
 	"github.com/boltdb/bolt"
-	"strconv"
 )
 
 // MiddlewareCache provide url resp cache
@@ -23,7 +25,7 @@ type CacheMiddleware struct {
 func NewCacheMiddleware(ctl types.APICTL) *CacheMiddleware {
 	db, err := bolt.Open("caching.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
-		ctl.Log().Error("MiddlewareCache: error init bolt db", "values", "caching.db,0600,timeout:1", "err", err)
+		ctl.Log().Error("MiddlewareCache: error init bolt db, values: caching.db,0600,timeout:1", zap.Error(err))
 	}
 
 	return &CacheMiddleware{
@@ -48,7 +50,7 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 		return err
 	})
 	if errtbl != nil {
-		cache.ctl.Log().Error("MiddlewareCache: error create bolt bucket for handlers caching", "values", string(cache.chBucket), "err", errtbl)
+		cache.ctl.Log().Error("MiddlewareCache: error create bolt bucket for handlers caching", zap.ByteString("values", cache.chBucket), zap.Error(errtbl))
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -84,12 +86,12 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 						rw.Header().Set("Content-Type", string(obj.ContentType()))
 						rw.WriteHeader(int(obj.Status()))
 
-						if wlen, err := rw.Write(obj.Body()); err != nil {
-							cache.ctl.Log().Error("MiddlewareCache: error ResponseWriter", "err", err)
+						if rwLen, err := rw.Write(obj.Body()); err != nil {
+							cache.ctl.Log().Error("MiddlewareCache: error ResponseWriter", zap.Error(err))
 						} else {
 							rw.Header().Set("X-Cache", string(key))
-							rw.Header().Set("X-Bytes", strconv.Itoa(wlen))
-							//cache.ctl.Log().Debug("MiddlewareCache: serve from cache", "fullPath", r.URL.RequestURI(), "key", string(key), "length", wlen)
+							cache.ctl.Log().Debug("MiddlewareCache: serve from cache", zap.String("fullPath", r.URL.RequestURI()),
+								zap.ByteString("key", key), zap.Int("length", rwLen))
 							return
 						}
 					}
@@ -106,11 +108,9 @@ func (cache *CacheMiddleware) RespFlat(rw http.ResponseWriter, r *http.Request, 
 	rw.Header().Set("Content-Type", "text/plain")
 
 	rw.WriteHeader(status)
-	if wlen, werr := rw.Write(data); werr != nil {
-		cache.ctl.Log().Error("MiddlewareCache:  error text response writer", "rwWrite", werr)
+	if _, werr := rw.Write(data); werr != nil {
+		cache.ctl.Log().Error("MiddlewareCache:  error text response writer", zap.Error(werr))
 		return
-	}else{
-		rw.Header().Set("X-Bytes", strconv.Itoa(wlen))
 	}
 
 	if k := r.Context().Value(types.CTXKey("cachein")); k != nil && status == 200 {
@@ -125,20 +125,16 @@ func (cache *CacheMiddleware) RespJson(rw http.ResponseWriter, r *http.Request, 
 
 	b, jerr := json.Marshal(data)
 	if jerr != nil {
-		cache.ctl.Log().Error("MiddlewareCache: error json response", "errMarshal", jerr)
+		cache.ctl.Log().Error("MiddlewareCache: error marshal json response", zap.Error(jerr))
 		http.Error(rw, "Internal Server Error", 500)
 		return
 	}
 
 	rw.WriteHeader(status)
-	if wlen, werr := rw.Write(b); werr != nil {
-		cache.ctl.Log().Error("MiddlewareCache:  error json response writer", "rwWrite", werr)
+	if _, werr := rw.Write(b); werr != nil {
+		cache.ctl.Log().Error("MiddlewareCache:  error json response writer", zap.Error(werr))
 		return
-	}else{
-		rw.Header().Set("X-Bytes", strconv.Itoa(wlen))
-	}
-
-	if k := r.Context().Value(types.CTXKey("cachein")); k != nil && status == 200 {
+	} else if k := r.Context().Value(types.CTXKey("cachein")); k != nil && status == 200 {
 		if key, ok := k.([]byte); ok && k != nil {
 			cache.writeCacheHandler(key, status, []byte("application/json"), b)
 		}
@@ -160,7 +156,7 @@ func (cache *CacheMiddleware) writeCacheHandler(key []byte, status int, ContentT
 	})
 
 	if err != nil {
-		cache.ctl.Log().Error("MiddlewareCache: error writeCacheHandler", "err", err)
+		cache.ctl.Log().Error("MiddlewareCache: error writeCacheHandler", zap.Error(err))
 	}
 }
 
@@ -172,7 +168,7 @@ func (cache *CacheMiddleware) logInfo() {
 		c := b.Cursor()
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
 			//fmt.Println("row: ", "K", string(k), "V", string(v))
-			cache.ctl.Log().Info("row: ", "Key", string(k))
+			cache.ctl.Log().Info("row: ", zap.ByteString("Key", k))
 		}
 		return nil
 	})

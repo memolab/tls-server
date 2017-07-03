@@ -3,25 +3,22 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"regexp"
 	"time"
+
+	"go.uber.org/zap"
 
 	"net/http/pprof"
 
 	"tls-server/api/middlewares"
 	"tls-server/api/types"
 
-	"gopkg.in/go-playground/validator.v9"
-	log "gopkg.in/inconshreveable/log15.v2"
 	"gopkg.in/mgo.v2"
-	"strconv"
 )
 
 type APICtl struct {
-	mongo    *mgo.Session
-	validate *validator.Validate
-	regMidd  map[string]types.Middleware
-	log      log.Logger
+	mongo   *mgo.Session
+	regMidd map[string]types.Middleware
+	log     *zap.Logger
 }
 
 var (
@@ -31,18 +28,17 @@ var (
 // InitAPI setup api functions and http handlers
 // return muxServe
 func InitAPI(config map[string]string) *http.ServeMux {
-	log := newLogger()
+	log, _ := newLogger(config["prod"])
 
 	mgoConn, err := newMongo(config["mongoURL"])
 	if err != nil {
-		log.Error("mongoDB conn", "newMongo", err)
+		log.Error("mongoDB conn", zap.Error(err))
 	}
 
 	c := &APICtl{
-		mongo:    mgoConn,
-		validate: newValidator(),
-		regMidd:  map[string]types.Middleware{},
-		log:      log,
+		mongo:   mgoConn,
+		regMidd: map[string]types.Middleware{},
+		log:     log,
 	}
 
 	middlewares.InitGlobalDumpDB(config["dumpDB"])
@@ -63,8 +59,6 @@ func InitAPI(config map[string]string) *http.ServeMux {
 	middAuth := authMiddleware.Handler()
 	middRateLimitIP := authMiddleware.RateLimitIPHandler(config["headerClientIPs"], config["rateLimiteIP"])
 
-
-
 	mux := http.NewServeMux()
 	d5min, _ := time.ParseDuration("5m")
 
@@ -81,6 +75,13 @@ func InitAPI(config map[string]string) *http.ServeMux {
 
 	mux.Handle("/signin", adapt(http.HandlerFunc(c.signInHandler), middRateLimitIP, middFront))
 	mux.Handle("/signup", adapt(http.HandlerFunc(c.signUpHandler), middRateLimitIP, middFront))
+	//
+
+	// register admin handlers
+	isAdmin := middlewares.IsAdmin(c, config["adminID"])
+	mux.Handle("/admin", adapt(http.HandlerFunc(c.adminIndexHanler), isAdmin, middAuth, middFront))
+	//mux.Handle("/dashboard/", http.StripPrefix("/dashboard", http.FileServer(http.Dir("public/"))))
+
 	//
 
 	if config["pprof"] == "1" {
@@ -100,7 +101,7 @@ func InitAPI(config map[string]string) *http.ServeMux {
 		}
 
 		if err != nil {
-			c.log.Warn("SHUTDOWN Error", "err", err)
+			c.log.Warn("SHUTDOWN Error", zap.Error(err))
 		}
 		c.log.Warn("SHUTDOWN.")
 	}
@@ -125,24 +126,27 @@ func (c *APICtl) RespJson(rw http.ResponseWriter, status int, data interface{}) 
 
 	b, jerr := json.Marshal(data)
 	if jerr != nil {
-		c.log.Error("Error json response", "errMarshal", jerr)
+		c.log.Error("Error marshal json response", zap.Error(jerr))
 		http.Error(rw, "Internal Server Error", 500)
 		return
 	}
 
 	rw.WriteHeader(status)
-	if wlen, werr := rw.Write(b); werr != nil {
-		c.log.Error("Error json response writer", "rwWrite", werr)
-	}else{
-		rw.Header().Set("X-Bytes", strconv.Itoa(wlen))
+	if _, werr := rw.Write(b); werr != nil {
+		c.log.Error("Error json response writer", zap.Error(werr))
 	}
 }
 
-func (c *APICtl) Abort(rw http.ResponseWriter, sts int) {
-	c.RespJson(rw, sts, map[string]interface{}{"code": sts, "msg": http.StatusText(sts)})
+func (c *APICtl) Abort(rw http.ResponseWriter, status int) {
+	//c.RespJson(rw, sts, map[string]interface{}{"code": sts, "msg": http.StatusText(sts)})
+	rw.Header().Set("Content-Type", "text/plain")
+	rw.WriteHeader(status)
+	if _, werr := rw.Write([]byte(http.StatusText(status))); werr != nil {
+		c.log.Error("Error json response writer", zap.Error(werr))
+	}
 }
 
-func (c *APICtl) Log() log.Logger {
+func (c *APICtl) Log() *zap.Logger {
 	return c.log
 }
 
@@ -157,26 +161,16 @@ func newMongo(url string) (*mgo.Session, error) {
 	return sess, nil
 }
 
-func newLogger() log.Logger {
-	log := log.New()
-	// add log handler
-	return log
-}
+func newLogger(prod string) (logger *zap.Logger, err error) {
+	if prod == "1" {
+		logger, err = zap.NewProduction()
+	} else {
+		logger, err = zap.NewDevelopment()
+	}
 
-func newValidator() *validator.Validate {
-	validate := validator.New()
-	validate.SetTagName("valid")
+	defer logger.Sync()
 
-	validate.RegisterValidation("alphanumunicode2", validatoralphanumunicode2)
-	return validate
-}
-
-var (
-	alphaUnicodeNumeric2Regex = regexp.MustCompile("^[\\p{L}\\p{N}\\._-]+$")
-)
-
-func validatoralphanumunicode2(fl validator.FieldLevel) bool {
-	return alphaUnicodeNumeric2Regex.MatchString(fl.Field().String())
+	return
 }
 
 func createMongoIndexs(mongo *mgo.Session) error {

@@ -16,9 +16,9 @@ type UserLoged struct {
 // User struct fro mongodb model
 type User struct {
 	ID        bson.ObjectId `bson:"_id,omitempty" json:"id"`
-	Username  string        `bson:"username" json:"username" valid:"required,alphanumunicode2,min=5,max=60"`
-	Email     string        `bson:"email" json:"email,omitempty" valid:"required,email"`
-	Password  string        `bson:"-" json:"password,omitempty" valid:"required,alphanumunicode2,min=5,max=60"`
+	Username  string        `bson:"username" json:"username" valid:"req,alphaNumu,min=5,max=60"`
+	Email     string        `bson:"email" json:"email,omitempty" valid:"req,email"`
+	Password  string        `bson:"-" json:"password,omitempty" valid:"req,alphaNumu,min=5,max=60"`
 	HPassword string        `bson:"hPassword" json:"-"`
 	Avatar    string        `bson:"avatar" json:"avatar,omitempty"`
 	IsActive  bool          `bson:"isActive" json:"isActive"`

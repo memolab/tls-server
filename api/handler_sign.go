@@ -5,10 +5,14 @@ import (
 	"net/http"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-	validator "gopkg.in/go-playground/validator.v9"
-	"gopkg.in/mgo.v2/bson"
+	"go.uber.org/zap"
+
 	"tls-server/api/middlewares"
+
+	"tls-server/utils"
+
+	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func (c *APICtl) signInHandler(rw http.ResponseWriter, r *http.Request) {
@@ -19,8 +23,8 @@ func (c *APICtl) signInHandler(rw http.ResponseWriter, r *http.Request) {
 		defer dbc.Close()
 
 		params := struct {
-			Email    string `json:"email" valid:"required,email,min=5,max=60"`
-			Password string `json:"password" valid:"required,alphanumunicode2,min=5,max=60"`
+			Email    string `json:"email" valid:"req,email"`
+			Password string `json:"password" valid:"req,alphaNumu,min=5,max=60"`
 		}{}
 
 		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
@@ -28,7 +32,7 @@ func (c *APICtl) signInHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if errs := c.validate.Struct(params); errs != nil {
+		if errs := utils.ValidateStruct(params); len(errs) > 0 {
 			c.Abort(rw, http.StatusBadRequest)
 			return
 		}
@@ -77,13 +81,8 @@ func (c *APICtl) signUpHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		errs := c.validate.Struct(user)
-		if errs != nil {
-			rerrs := map[string]string{}
-			for _, v := range errs.(validator.ValidationErrors) {
-				rerrs[v.Field()] = v.Tag()
-			}
-			c.RespJson(rw, http.StatusNotAcceptable, map[string]map[string]string{"errs": rerrs})
+		if errs := utils.ValidateStruct(user); len(errs) > 0 {
+			c.RespJson(rw, http.StatusNotAcceptable, errs)
 			return
 		}
 
@@ -94,7 +93,7 @@ func (c *APICtl) signUpHandler(rw http.ResponseWriter, r *http.Request) {
 		)
 
 		if newPass, err = bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost); err != nil {
-			c.log.Error("bcrypt gen pass", "err", err)
+			c.log.Error("bcrypt gen pass", zap.Error(err))
 			c.Abort(rw, http.StatusInternalServerError)
 			return
 		}
@@ -109,13 +108,13 @@ func (c *APICtl) signUpHandler(rw http.ResponseWriter, r *http.Request) {
 
 		auth := c.regMidd["auth"].(*middlewares.AuthMiddleware)
 		if token, err = auth.NewSecretToken(user.ID.Hex()); err != nil {
-			c.log.Error("gen NewSecretToken", "err", err)
+			c.log.Error("gen NewSecretToken", zap.Error(err))
 			c.Abort(rw, http.StatusInternalServerError)
 			return
 		}
 
 		if err = dbc.DB("").C("users").Insert(user); err != nil {
-			c.log.Error("db users Insert", "err", err)
+			c.log.Error("db users Insert", zap.Error(err))
 			c.Abort(rw, http.StatusInternalServerError)
 			return
 		}

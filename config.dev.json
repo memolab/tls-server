@@ -1,4 +1,5 @@
 {
+  "prod":"0",
   "addr": "127.0.0.1:8888",
   "dumpDB":"mongodb://localhost/app-go-db-logsDump",
   "accessLogsDump":"30s",
@@ -12,5 +13,7 @@
   "secretKey1": "1234567890123456",
   "secretKey2": "1234567890123456",
  
-  "pprof":"0"
+  "pprof":"0",
+
+  "adminID":"593c4d4d45cf2708b6cb532d"
 }

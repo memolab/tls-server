@@ -8,6 +8,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
+
 	"tls-server/api/types"
 
 	"github.com/gorilla/securecookie"
@@ -57,12 +60,12 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 	d, errs := time.ParseDuration(rateLimiteConf[1])
 	rateLimit := &rateLimiter{duration: d, count: c, clients: map[string]rateLimiterClient{}, syncMtx: &sync.Mutex{}}
 	if errs != nil || erri != nil {
-		ctl.Log().Error("AuthMiddleware: invalid RateLimit config", "erri", erri, "errs", errs)
+		ctl.Log().Error("AuthMiddleware: invalid RateLimit config", zap.Errors("erri,errs", []error{erri, errs}))
 	}
 
 	dumpDuration, errd := time.ParseDuration(configRateLimiteLogsDump)
 	if errd != nil {
-		ctl.Log().Error("AuthMiddleware: invalid configRateLimiteLogsDump config", "errd", errd)
+		ctl.Log().Error("AuthMiddleware: invalid configRateLimiteLogsDump config", zap.Error(errd))
 	}
 
 	auth := &AuthMiddleware{
@@ -117,9 +120,9 @@ func (auth *AuthMiddleware) dumpLogs() {
 	for _, v := range clientsLog {
 		bulk.Insert(v)
 	}
-	_, err := bulk.Run()
-	if err != nil {
-		auth.ctl.Log().Error("AuthMiddleware: error db dumpLogs", "err", err)
+
+	if _, err := bulk.Run(); err != nil {
+		auth.ctl.Log().Error("AuthMiddleware: error db dumpLogs", zap.Error(err))
 	}
 }
 
@@ -201,7 +204,7 @@ func (auth *AuthMiddleware) RateLimitIPHandler(headerkeysConf string, rateLimite
 	c, erri := strconv.Atoi(rateLimiteConf[0])
 	d, errs := time.ParseDuration(rateLimiteConf[1])
 	if errs != nil || erri != nil {
-		auth.ctl.Log().Error("call rateLimitIPHandler with Invalid config", "erri", erri, "errs", errs)
+		auth.ctl.Log().Error("call rateLimitIPHandler with Invalid config", zap.Error(erri), zap.Error(errs))
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -219,7 +222,7 @@ func (auth *AuthMiddleware) RateLimitIPHandler(headerkeysConf string, rateLimite
 }
 
 func (auth *AuthMiddleware) logInfo() {
-	auth.ctl.Log().Info("AuthMiddleware Log:", "clients", auth.rateLimit.clients)
+	auth.ctl.Log().Info("AuthMiddleware Log:", zap.Any("clients", auth.rateLimit.clients))
 }
 
 func (auth *AuthMiddleware) Shutdown() {

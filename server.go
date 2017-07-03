@@ -79,8 +79,9 @@ func main() {
 		srv.Close()
 	}()
 
-	fmt.Printf("STARTING...Listen https://%s\n", config["addr"])
+	//fmt.Printf("STARTING...Listen https://%s\n", config["addr"])
 	//if err := srv.ListenAndServeTLS(fmt.Sprintf("certs/%s/cert.pem", certsdir), fmt.Sprintf("certs/%s/key.pem", certsdir)); err != nil && err.Error() != "http: Server closed" {
+	fmt.Printf("STARTING...Listen http://%s\n", config["addr"])
 	if err := srv.ListenAndServe(); err != nil && err.Error() != "http: Server closed" {
 		api.ShutdownAPI(err)
 		return
@@ -88,6 +89,3 @@ func main() {
 
 	api.ShutdownAPI(nil)
 }
-
-//
-//go-torch -t=5 -u=http://127.0.0.1:8888 -p > profile.svg
