@@ -5,14 +5,22 @@ import (
 	"time"
 
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var dumpDB *mgo.Session
 
+func GetAccesslogs(re *[]AccessLog, find bson.M, sort []string) error {
+	dbc := dumpDB.Copy()
+	defer dbc.Close()
+
+	return dbc.DB("").C("accessLogs").Find(find).Sort(sort...).All(re)
+}
+
 func CreateMongoIndexs(mongo *mgo.Session) []error {
 	indxs := []mgo.Index{
 		mgo.Index{
-			Key:        []string{"-Timed", "Status", "HandlersDuration"},
+			Key:        []string{"-Timed", "Status", "Duration"},
 			Background: true,
 			Sparse:     true,
 		},

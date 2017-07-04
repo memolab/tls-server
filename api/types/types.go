@@ -22,7 +22,7 @@ type (
 
 	// APICTL main api controller type
 	APICTL interface {
-		RespJson(http.ResponseWriter, int, interface{})
+		RespJSON(http.ResponseWriter, int, interface{})
 		Abort(http.ResponseWriter, int)
 		Log() *zap.Logger
 	}

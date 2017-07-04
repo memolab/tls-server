@@ -7,8 +7,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"tls-server/api/middlewares"
-
 	"tls-server/utils"
 
 	"golang.org/x/crypto/bcrypt"
@@ -39,19 +37,17 @@ func (c *APICtl) signInHandler(rw http.ResponseWriter, r *http.Request) {
 
 		user := User{}
 		if err := dbc.DB("").C("users").Find(bson.M{"email": params.Email}).One(&user); err != nil {
-			c.RespJson(rw, http.StatusNotAcceptable, map[string]string{"msg": "Bad Credentials."})
+			c.RespJSON(rw, http.StatusNotAcceptable, map[string]string{"msg": "Bad Credentials."})
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.HPassword), []byte(params.Password)); err != nil {
-			c.RespJson(rw, http.StatusNotAcceptable, map[string]string{"msg": "Bad Credentials."})
+			c.RespJSON(rw, http.StatusNotAcceptable, map[string]string{"msg": "Bad Credentials."})
 			return
 		}
 
-		auth := c.regMidd["auth"].(*middlewares.AuthMiddleware)
-
-		if token, err := auth.NewSecretToken(user.ID.Hex()); err == nil {
-			c.RespJson(rw, http.StatusOK, struct {
+		if token, err := c.auth.NewSecretToken(user.ID.Hex()); err == nil {
+			c.RespJSON(rw, http.StatusOK, struct {
 				User  UserLoged `json:"user"`
 				Token string    `json:"token"`
 			}{
@@ -82,7 +78,7 @@ func (c *APICtl) signUpHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		if errs := utils.ValidateStruct(user); len(errs) > 0 {
-			c.RespJson(rw, http.StatusNotAcceptable, errs)
+			c.RespJSON(rw, http.StatusNotAcceptable, errs)
 			return
 		}
 
@@ -106,8 +102,7 @@ func (c *APICtl) signUpHandler(rw http.ResponseWriter, r *http.Request) {
 		user.Dated = &dated
 		user.Updated = &dated
 
-		auth := c.regMidd["auth"].(*middlewares.AuthMiddleware)
-		if token, err = auth.NewSecretToken(user.ID.Hex()); err != nil {
+		if token, err = c.auth.NewSecretToken(user.ID.Hex()); err != nil {
 			c.log.Error("gen NewSecretToken", zap.Error(err))
 			c.Abort(rw, http.StatusInternalServerError)
 			return
@@ -119,7 +114,7 @@ func (c *APICtl) signUpHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		c.RespJson(rw, http.StatusCreated, struct {
+		c.RespJSON(rw, http.StatusCreated, struct {
 			User  UserLoged `json:"user"`
 			Token string    `json:"token"`
 		}{

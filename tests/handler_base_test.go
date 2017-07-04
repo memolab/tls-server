@@ -8,7 +8,7 @@ import (
 )
 
 func TestToken(t *testing.T) {
-	serve := newServing(t)
+	serve := newServing()
 
 	w1 := serve("GET", "/", ``)
 	if w1.Code != http.StatusOK {
@@ -40,7 +40,7 @@ func TestToken(t *testing.T) {
 }
 
 func TestDBIndex(t *testing.T) {
-	serve := newServing(t)
+	serve := newServing()
 	signUserToken("557840937ab117f73048710c")
 
 	w1 := serve("POST", "/initdb", ``)
@@ -50,7 +50,7 @@ func TestDBIndex(t *testing.T) {
 }
 
 func TestCache(t *testing.T) {
-	serve := newServing(t)
+	serve := newServing()
 
 	signUserToken("557840937ab117f73048710c")
 
@@ -60,9 +60,9 @@ func TestCache(t *testing.T) {
 			t.Errorf("Get /user returned %v. Expected %v", w.Code, http.StatusOK)
 		}
 
-		if i > 0 {
-			if w.Header().Get("X-Content") != "cached" {
-				t.Errorf("Get /user faild cached header %v. Expected %v", w.Header().Get("X-Content"), "cached")
+		if i > 3 {
+			if w.Header().Get("X-Cache") != "/user;557840937ab117f73048710c" {
+				t.Errorf("Get /user faild X-Cache header %s. Expected %s", w.Header().Get("X-Cache"), "/user;557840937ab117f73048710c")
 			}
 		}
 	}

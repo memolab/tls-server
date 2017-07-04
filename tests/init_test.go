@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
-	"testing"
 
 	"github.com/gorilla/securecookie"
 
@@ -52,15 +51,16 @@ func setup() {
 	fmt.Println("init Routs ...")
 }
 
-func newServing(t *testing.T) Serving {
+func newServing() Serving {
 	setup()
 	return func(method string, url string, params string) *httptest.ResponseRecorder {
 		req, err := http.NewRequest(method, ("https://" + addr + url), strings.NewReader(params))
 		if err != nil {
 			log.Fatal(err)
-			t.Errorf("%v", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Connection", "keep-alive")
+
 		if usrToken != "" {
 			req.Header.Set(headerTokenKey, usrToken)
 		}

@@ -57,9 +57,8 @@ type AccessLog struct {
 	Path            string        `bson:"Path"`
 	Method          string        `bson:"Method"`
 	Cached          string        `bson:"Cached"`
-	// get time in Nanosecond
-	HandlersDuration time.Duration `bson:"HandlersDuration"`
-	Timed            time.Time     `bson:"Timed"`
+	Duration        time.Duration `bson:"Duration"` // get time duration in Nanosecond
+	Timed           time.Time     `bson:"Timed"`
 }
 
 func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string) *FrontMiddleware {
@@ -123,6 +122,8 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 			rw.Header().Set("expires", "-1")
 			rw.Header().Set("Vary", "Accept-Encoding")
 			rw.Header().Set("Access-Control-Allow-Origin", "*")
+			rw.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type")
+
 			rw.Header().Set("X-Content-Type-Options", "nosniff")
 			rw.Header().Set("x-frame-options", "SAMEORIGIN")
 			rw.Header().Set("x-xss-protection", "1; mode=block")
@@ -137,22 +138,27 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 				}
 			}()
 
+			if r.Method == "OPTIONS" || r.Method == "HEAD" {
+				front.ctl.Abort(rw, 200)
+				return
+			}
+
 			next.ServeHTTP(rw, r)
 
 			front.accessChan <- AccessLog{RemoteAddr: strings.Split(r.RemoteAddr, ":")[0],
-				ReqContentType:   r.Header.Get("Content-Type"),
-				RespContentType:  rw.Header().Get("Content-Type"),
-				ReqLength:        int(r.ContentLength),
-				RespLength:       rw.length,
-				Status:           rw.status,
-				Path:             r.URL.RequestURI(),
-				Method:           r.Method,
-				Cached:           rw.Header().Get("X-Cache"),
-				HandlersDuration: time.Since(sTime),
-				Timed:            sTime}
+				ReqContentType:  r.Header.Get("Content-Type"),
+				RespContentType: rw.Header().Get("Content-Type"),
+				ReqLength:       int(r.ContentLength),
+				RespLength:      rw.length,
+				Status:          rw.status,
+				Path:            r.URL.RequestURI(),
+				Method:          r.Method,
+				Cached:          rw.Header().Get("X-Cache"),
+				Duration:        time.Since(sTime),
+				Timed:           sTime}
 
-			front.ctl.Log().Info(r.URL.RequestURI(), zap.Int("status", rw.status),
-				zap.Duration("HandlersDuration", time.Since(sTime)))
+			front.ctl.Log().Debug(r.URL.RequestURI(), zap.Int("status", rw.status),
+				zap.Duration("duration", time.Since(sTime)))
 		})
 	}
 }

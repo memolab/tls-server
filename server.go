@@ -21,7 +21,7 @@ func init() {
 }
 
 func main() {
-	mod := flag.String("config", "dev", "-config=dev run in development mode.")
+	mod := flag.String("config", "dev", "-config=dev run with configuration file config.(mode).json.")
 	flag.Parse()
 
 	var config map[string]string
@@ -75,7 +75,6 @@ func main() {
 	signal.Notify(osCh, os.Interrupt, os.Kill)
 	go func() {
 		<-osCh
-
 		srv.Close()
 	}()
 

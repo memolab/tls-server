@@ -120,7 +120,8 @@ func (cache *CacheMiddleware) RespFlat(rw http.ResponseWriter, r *http.Request, 
 	}
 }
 
-func (cache *CacheMiddleware) RespJson(rw http.ResponseWriter, r *http.Request, status int, data interface{}) {
+// RespJSON responce json content type with cachable
+func (cache *CacheMiddleware) RespJSON(rw http.ResponseWriter, r *http.Request, status int, data interface{}) {
 	rw.Header().Set("Content-Type", "application/json")
 
 	b, jerr := json.Marshal(data)
@@ -141,6 +142,7 @@ func (cache *CacheMiddleware) RespJson(rw http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// Get return bytes from cache db
 func (cache *CacheMiddleware) Get(key []byte) (data []byte) {
 	cache.db.View(func(tx *bolt.Tx) error {
 		data = tx.Bucket(cache.chBucket).Get(key)
