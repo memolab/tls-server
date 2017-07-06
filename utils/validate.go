@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -21,12 +22,12 @@ var (
 		"alphaNumu": "is not a valid alphanumeric andOr ._- characters",
 	}
 
-	reqErr = fmt.Errorf("required field")
+	errReq = errors.New("required field")
 )
 
 // ValidateStruct validate struct return error array with key field name
-func ValidateStruct(s interface{}) map[string]error {
-	errs := map[string]error{}
+func ValidateStruct(s interface{}) map[string]string {
+	errs := map[string]string{}
 
 	v := reflect.ValueOf(s)
 
@@ -74,10 +75,13 @@ func ValidateStruct(s interface{}) map[string]error {
 		}
 
 		if err != nil {
-			errs[v.Type().Field(i).Name] = err
+			if tagJ := v.Type().Field(i).Tag.Get("json"); tagJ != "" {
+				errs[strings.Split(tagJ, ",")[0]] = err.Error()
+			} else {
+				errs[v.Type().Field(i).Name] = err.Error()
+			}
 		}
 	}
-
 	return errs
 }
 
@@ -86,7 +90,7 @@ func validateString(val string, min int, max int, req bool, regkey string) error
 	l := utf8.RuneCountInString(val)
 
 	if req && l == 0 {
-		return reqErr
+		return errReq
 	}
 
 	if min > 0 && l < min {
@@ -98,7 +102,7 @@ func validateString(val string, min int, max int, req bool, regkey string) error
 	}
 
 	if !validateRegs[regkey].MatchString(val) {
-		return fmt.Errorf(validateRegsMsgs[regkey])
+		return errors.New(validateRegsMsgs[regkey])
 	}
 
 	return nil
@@ -109,11 +113,11 @@ func validateEmail(val string, req bool) error {
 	l := utf8.RuneCountInString(val)
 
 	if req && l == 0 {
-		return reqErr
+		return errReq
 	}
 
 	if !validateRegs["email"].MatchString(val) {
-		return fmt.Errorf(validateRegsMsgs["email"])
+		return errors.New(validateRegsMsgs["email"])
 	}
 
 	return nil
@@ -121,7 +125,7 @@ func validateEmail(val string, req bool) error {
 
 func validateNumber(val int, min int, max int, req bool) error {
 	if req && val <= 0 {
-		return reqErr
+		return errReq
 	} else if !req && (min == -1 && max == -1) {
 		return nil
 	}

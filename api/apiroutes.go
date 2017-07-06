@@ -10,7 +10,8 @@ import (
 func initRoutes(c *APICtl, config map[string]string) *[]route {
 
 	// new FrontMiddleware
-	frontMiddleware := middlewares.NewFrontMiddleware(c, config["accessLogsDump"])
+	frontMiddleware := middlewares.NewFrontMiddleware(c, config["accessLogsDump"],
+		"Content-Type,"+config["headerTokenKey"])
 	middFront := frontMiddleware.Handler()
 	c.regMidd["front"] = frontMiddleware
 	//
@@ -73,12 +74,12 @@ func initRoutes(c *APICtl, config map[string]string) *[]route {
 		route{
 			url:         "/admin",
 			handler:     c.adminIndexHanler,
-			middlewares: []types.MiddlewareHandler{isAdmin, middAuth, middFront},
+			middlewares: []types.MiddlewareHandler{middFront},
 		},
 		route{
 			url:         "/admin/accesslogs",
 			handler:     c.adminAccesslogsHanler,
-			middlewares: []types.MiddlewareHandler{middFront},
+			middlewares: []types.MiddlewareHandler{isAdmin, middAuth, middFront},
 		},
 	}
 

@@ -162,7 +162,8 @@ func (cache *CacheMiddleware) writeCacheHandler(key []byte, status int, ContentT
 	}
 }
 
-func (cache *CacheMiddleware) logInfo() {
+// LogInfo log all caching data
+func (cache *CacheMiddleware) LogInfo() {
 	cache.ctl.Log().Info("CacheMiddleware log DB:")
 
 	cache.db.View(func(tx *bolt.Tx) error {
@@ -176,7 +177,7 @@ func (cache *CacheMiddleware) logInfo() {
 	})
 }
 
-func (cache *CacheMiddleware) Shutdown() {
-	cache.logInfo()
+// Close end any pinding tasks
+func (cache *CacheMiddleware) Close() {
 	cache.db.Close()
 }

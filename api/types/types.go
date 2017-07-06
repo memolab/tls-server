@@ -11,7 +11,7 @@ type (
 	// Middleware type interface
 	Middleware interface {
 		Handler() MiddlewareHandler
-		Shutdown()
+		Close()
 	}
 
 	// MiddlewareHandler middleware http handler type

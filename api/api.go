@@ -56,7 +56,7 @@ func InitAPI(config map[string]string) *http.ServeMux {
 		log:     log,
 	}
 
-	middlewares.InitGlobalDumpDB(config["dumpDB"])
+	middlewares.InitGlobalDumpDB(config["dumpDB"], config["prod"])
 
 	mux := http.NewServeMux()
 
@@ -69,10 +69,10 @@ func InitAPI(config map[string]string) *http.ServeMux {
 			c.mongo.Close()
 		}
 
-		c.auth.Shutdown()
-		c.cache.Shutdown()
+		c.auth.Close()
+		c.cache.Close()
 		for _, m := range c.regMidd {
-			m.Shutdown()
+			m.Close()
 		}
 
 		if err != nil {
@@ -98,29 +98,39 @@ func applyMiddlewares(h http.Handler, handlers ...types.MiddlewareHandler) http.
 	return h
 }
 
-// RespJSON responce json content type
+// RespFlat responce data bytes as text plain content type
+func (c *APICtl) RespFlat(rw http.ResponseWriter, status int, data []byte) {
+	rw.Header().Set("Content-Type", "text/plain")
+	rw.WriteHeader(status)
+	if _, err := rw.Write(data); err != nil {
+		c.log.Error("Error response writer", zap.Error(err))
+		return
+	}
+}
+
+// RespJSON responce data as json content type
 func (c *APICtl) RespJSON(rw http.ResponseWriter, status int, data interface{}) {
 	rw.Header().Set("Content-Type", "application/json")
 
-	b, jerr := json.Marshal(data)
-	if jerr != nil {
-		c.log.Error("Error marshal json response", zap.Error(jerr))
+	b, errj := json.Marshal(data)
+	if errj != nil {
+		c.log.Error("Error marshal json response", zap.Error(errj))
 		http.Error(rw, "Internal Server Error", 500)
 		return
 	}
 
 	rw.WriteHeader(status)
-	if _, werr := rw.Write(b); werr != nil {
-		c.log.Error("Error json response writer", zap.Error(werr))
+	if _, errw := rw.Write(b); errw != nil {
+		c.log.Error("Error json response writer", zap.Error(errw))
 	}
 }
 
-// Abort abort status responce
+// Abort responce status
 func (c *APICtl) Abort(rw http.ResponseWriter, status int) {
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(status)
-	if _, werr := rw.Write([]byte(http.StatusText(status))); werr != nil {
-		c.log.Error("Error json response writer", zap.Error(werr))
+	if _, err := rw.Write([]byte(http.StatusText(status))); err != nil {
+		c.log.Error("Error response writer", zap.Error(err))
 	}
 }
 

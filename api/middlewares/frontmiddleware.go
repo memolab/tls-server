@@ -40,10 +40,11 @@ func (rw *AResponseWriter) WriteHeader(code int) {
 }
 
 type FrontMiddleware struct {
-	ctl        types.APICTL
-	AccessLogs []AccessLog
-	accessChan chan AccessLog
-	stopLog    chan bool
+	ctl         types.APICTL
+	AccessLogs  []AccessLog
+	accessChan  chan AccessLog
+	allowHeadrs string
+	stopLog     chan struct{}
 }
 
 type AccessLog struct {
@@ -61,16 +62,22 @@ type AccessLog struct {
 	Timed           time.Time     `bson:"Timed"`
 }
 
-func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string) *FrontMiddleware {
+func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string, allowHeadrs string) *FrontMiddleware {
 	dumpDuration, err := time.ParseDuration(configAccessLogsDump)
 	if err != nil {
 		ctl.Log().Error("FrontMiddleware: error parsing accessLogsDumpConf duration", zap.Error(err))
 	}
 
+	allowHeadrsArr := strings.Split(strings.ToLower(allowHeadrs), ",")
+	for i, s := range allowHeadrsArr {
+		allowHeadrsArr[i] = strings.Title(strings.TrimSpace(s))
+	}
+
 	front := &FrontMiddleware{
-		ctl:        ctl,
-		accessChan: make(chan AccessLog, 200),
-		stopLog:    make(chan bool),
+		ctl:         ctl,
+		accessChan:  make(chan AccessLog, 200),
+		allowHeadrs: strings.Join(allowHeadrsArr, ","),
+		stopLog:     make(chan struct{}),
 	}
 
 	go func() {
@@ -83,6 +90,7 @@ func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string) *FrontMid
 			case <-ticker.C:
 				front.dumpLogs()
 			case <-front.stopLog:
+				front.dumpLogs()
 				return
 			}
 		}
@@ -112,6 +120,7 @@ func (front *FrontMiddleware) dumpLogs() {
 	front.AccessLogs = nil
 }
 
+// Handler impl middleware handler
 func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(_rw http.ResponseWriter, r *http.Request) {
@@ -122,8 +131,7 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 			rw.Header().Set("expires", "-1")
 			rw.Header().Set("Vary", "Accept-Encoding")
 			rw.Header().Set("Access-Control-Allow-Origin", "*")
-			rw.Header().Set("Access-Control-Allow-Headers", "Authorization,Content-Type")
-
+			rw.Header().Set("Access-Control-Allow-Headers", front.allowHeadrs)
 			rw.Header().Set("X-Content-Type-Options", "nosniff")
 			rw.Header().Set("x-frame-options", "SAMEORIGIN")
 			rw.Header().Set("x-xss-protection", "1; mode=block")
@@ -163,11 +171,12 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 	}
 }
 
-func (front *FrontMiddleware) logInfo() {
+// LogInfo log all pinding data
+func (front *FrontMiddleware) LogInfo() {
 	front.ctl.Log().Info("FrontMiddleware Log:", zap.Any("clients", front.AccessLogs))
 }
 
-func (front *FrontMiddleware) Shutdown() {
-	front.logInfo()
-	front.stopLog <- true
+// Close end any pinding tasks
+func (front *FrontMiddleware) Close() {
+	front.stopLog <- struct{}{}
 }

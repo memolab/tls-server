@@ -25,7 +25,7 @@ type AuthMiddleware struct {
 	rateLimit      *rateLimiter
 	scCookie       *securecookie.SecureCookie
 	dumpDuration   time.Duration
-	stopLog        chan bool
+	stopLog        chan struct{}
 }
 
 type rateLimiter struct {
@@ -70,11 +70,11 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 
 	auth := &AuthMiddleware{
 		ctl:            ctl,
-		headerTokenKey: configHeaderTokenKey,
+		headerTokenKey: strings.Title(strings.ToLower(configHeaderTokenKey)),
 		rateLimit:      rateLimit,
 		scCookie:       scCookie,
 		dumpDuration:   dumpDuration,
-		stopLog:        make(chan bool),
+		stopLog:        make(chan struct{}),
 	}
 
 	go func() {
@@ -85,6 +85,7 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 			case <-ticker.C:
 				auth.dumpLogs()
 			case <-auth.stopLog:
+				auth.dumpLogs()
 				return
 			}
 		}
@@ -198,6 +199,7 @@ func (auth *AuthMiddleware) checkRateLimit(uid string, limitDuration time.Durati
 	return re
 }
 
+// RateLimitIPHandler limit access by client ip
 func (auth *AuthMiddleware) RateLimitIPHandler(headerkeysConf string, rateLimiteConfStr string) types.MiddlewareHandler {
 	//headerkeys := strings.Split(headerkeysConf, ",")
 	rateLimiteConf := strings.Split(rateLimiteConfStr, ":")
@@ -221,11 +223,12 @@ func (auth *AuthMiddleware) RateLimitIPHandler(headerkeysConf string, rateLimite
 	}
 }
 
-func (auth *AuthMiddleware) logInfo() {
+// LogInfo log all pinding data
+func (auth *AuthMiddleware) LogInfo() {
 	auth.ctl.Log().Info("AuthMiddleware Log:", zap.Any("clients", auth.rateLimit.clients))
 }
 
-func (auth *AuthMiddleware) Shutdown() {
-	auth.logInfo()
-	auth.stopLog <- true
+// Close stop dump data
+func (auth *AuthMiddleware) Close() {
+	auth.stopLog <- struct{}{}
 }
