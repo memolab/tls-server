@@ -41,8 +41,8 @@ func (rw *AResponseWriter) WriteHeader(code int) {
 
 type FrontMiddleware struct {
 	ctl         types.APICTL
-	AccessLogs  []AccessLog
-	accessChan  chan AccessLog
+	AccessLogs  []*AccessLog
+	accessChan  chan *AccessLog
 	allowHeadrs string
 	stopLog     chan struct{}
 }
@@ -75,7 +75,7 @@ func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string, allowHead
 
 	front := &FrontMiddleware{
 		ctl:         ctl,
-		accessChan:  make(chan AccessLog, 200),
+		accessChan:  make(chan *AccessLog, 200),
 		allowHeadrs: strings.Join(allowHeadrsArr, ","),
 		stopLog:     make(chan struct{}),
 	}
@@ -153,7 +153,7 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 
 			next.ServeHTTP(rw, r)
 
-			front.accessChan <- AccessLog{RemoteAddr: strings.Split(r.RemoteAddr, ":")[0],
+			front.accessChan <- &AccessLog{RemoteAddr: strings.Split(r.RemoteAddr, ":")[0],
 				ReqContentType:  r.Header.Get("Content-Type"),
 				RespContentType: rw.Header().Get("Content-Type"),
 				ReqLength:       int(r.ContentLength),

@@ -31,7 +31,7 @@ type AuthMiddleware struct {
 type rateLimiter struct {
 	duration time.Duration
 	count    int
-	clients  map[string]rateLimiterClient
+	clients  map[string]*rateLimiterClient
 	syncMtx  *sync.Mutex
 }
 type rateLimiterClient struct {
@@ -41,12 +41,11 @@ type rateLimiterClient struct {
 	TID       string
 }
 type clientLog struct {
-	ID        bson.ObjectId `bson:"_id,omitempty"`
-	UID       string        `bson:"UID"`
-	TypeID    string        `bson:"TypeID"`
-	Timed     time.Time     `bson:"Timed"`
-	Count     int           `bson:"Count"`
-	OverCount int           `bson:"OverCount"`
+	UID       string    `bson:"_id"`
+	TypeID    string    `bson:"TypeID"`
+	Timed     time.Time `bson:"Timed"`
+	Count     int       `bson:"Count"`
+	OverCount int       `bson:"OverCount"`
 }
 
 func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
@@ -58,7 +57,7 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 	rateLimiteConf := strings.Split(configRateLimiteAPI, ":")
 	c, erri := strconv.Atoi(rateLimiteConf[0])
 	d, errs := time.ParseDuration(rateLimiteConf[1])
-	rateLimit := &rateLimiter{duration: d, count: c, clients: map[string]rateLimiterClient{}, syncMtx: &sync.Mutex{}}
+	rateLimit := &rateLimiter{duration: d, count: c, clients: map[string]*rateLimiterClient{}, syncMtx: &sync.Mutex{}}
 	if errs != nil || erri != nil {
 		ctl.Log().Error("AuthMiddleware: invalid RateLimit config", zap.Errors("erri,errs", []error{erri, errs}))
 	}
@@ -96,17 +95,18 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 
 func (auth *AuthMiddleware) dumpLogs() {
 	auth.rateLimit.syncMtx.Lock()
-	defer auth.rateLimit.syncMtx.Unlock()
 
 	clientsLog := []clientLog{}
 	for k, v := range auth.rateLimit.clients {
-		if time.Now().Sub(v.time) > auth.dumpDuration {
+		if time.Now().UTC().Sub(v.time) > auth.dumpDuration {
 			clientsLog = append(clientsLog, clientLog{
 				UID: k, TypeID: v.TID, Timed: v.time, Count: v.count, OverCount: v.overCount,
 			})
 			delete(auth.rateLimit.clients, k)
 		}
 	}
+
+	auth.rateLimit.syncMtx.Unlock()
 
 	if !(len(clientsLog) > 0) {
 		return
@@ -119,7 +119,12 @@ func (auth *AuthMiddleware) dumpLogs() {
 	bulk := uc.Bulk()
 	bulk.Unordered()
 	for _, v := range clientsLog {
-		bulk.Insert(v)
+		bulk.Upsert(bson.M{"_id": v.UID},
+			bson.M{
+				"$set": bson.M{"Timed": v.Timed, "_id": v.UID, "TypeID": v.TypeID},
+				"$inc": bson.M{"Count": v.Count, "OverCount": v.OverCount},
+			},
+		)
 	}
 
 	if _, err := bulk.Run(); err != nil {
@@ -174,12 +179,15 @@ func (auth *AuthMiddleware) NewSecretToken(tokenVal string) (encoded string, err
 
 func (auth *AuthMiddleware) checkRateLimit(uid string, limitDuration time.Duration, limitCount int, tid string) bool {
 	re := false
-	t := time.Now()
+	t := time.Now().UTC()
 
 	auth.rateLimit.syncMtx.Lock()
 	defer auth.rateLimit.syncMtx.Unlock()
 
 	cu := auth.rateLimit.clients[uid]
+	if cu == nil {
+		cu = &rateLimiterClient{}
+	}
 
 	if t.Sub(cu.time) <= limitDuration {
 		if cu.count >= limitCount {

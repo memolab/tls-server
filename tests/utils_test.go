@@ -20,23 +20,23 @@ func TestValidationStruct(t *testing.T) {
 
 	errs := utils.ValidateStruct(usr1)
 
-	if errs["ID"] != nil {
+	if errs["ID"] != "" {
 		t.Errorf("got %s, Expected empty", errs["ID"])
 	}
 
-	if errs["Username"] != nil {
+	if errs["Username"] != "" {
 		t.Errorf("got %s, Expected empty", errs["username"])
 	}
 
-	if errs["Email"] == nil {
+	if errs["Email"] == "" {
 		t.Errorf("Expected error email field")
-	} else if errs["Email"].Error() != "is not a valid email address" {
+	} else if errs["Email"] != "is not a valid email address" {
 		t.Errorf("Expected error email (is not a valid email address)")
 	}
 
-	if errs["Password"] == nil {
+	if errs["Password"] == "" {
 		t.Errorf("Expected error Password field")
-	} else if !strings.HasPrefix(errs["Password"].Error(), "is not a valid alphanumeric") {
+	} else if !strings.HasPrefix(errs["Password"], "is not a valid alphanumeric") {
 		t.Errorf("got %s, Expected has (is not a valid alphanumeric)", errs["Password"])
 	}
 
