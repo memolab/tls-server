@@ -71,6 +71,24 @@ func (c *APICtl) adminIndexHanler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (c *APICtl) adminOverviewHanler(rw http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		/*re := []middlewares.AccessLog{}
+		sel := bson.M{}
+
+		if duration, err := time.ParseDuration(r.FormValue("in")); err == nil {
+			sel["Timed"] = bson.M{"$gt": time.Now().UTC().Add(duration)}
+		} else {
+			sel["Timed"] = bson.M{"$gt": time.Now().UTC().Add(-1 * time.Hour)}
+		}*/
+		//
+
+	default:
+		c.Abort(rw, http.StatusMethodNotAllowed)
+	}
+}
+
 func (c *APICtl) adminAccesslogsHanler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":

@@ -10,7 +10,7 @@ import (
 func IsAdmin(ctl types.APICTL, adminID string) types.MiddlewareHandler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			uid := r.Context().Value(types.CTXKey("uid")).(string)
+			uid := r.Context().Value(types.CTXUIDKey{}).(string)
 
 			if adminID != uid {
 				ctl.Abort(rw, http.StatusForbidden)

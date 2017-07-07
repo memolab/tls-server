@@ -50,12 +50,14 @@ type FrontMiddleware struct {
 type AccessLog struct {
 	ID              bson.ObjectId `bson:"_id,omitempty"`
 	RemoteAddr      string        `bson:"RemoteAddr"`
+	UID             string        `bson:"UID"`
 	ReqContentType  string        `bson:"ReqContentType"`
 	RespContentType string        `bson:"RespContentType"`
 	ReqLength       int           `bson:"ReqLength"`
 	RespLength      int           `bson:"RespLength"`
 	Status          int           `bson:"Status"`
 	Path            string        `bson:"Path"`
+	Query           string        `bson:"Query"`
 	Method          string        `bson:"Method"`
 	Cached          string        `bson:"Cached"`
 	Duration        time.Duration `bson:"Duration"` // get time duration in Nanosecond
@@ -75,7 +77,7 @@ func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string, allowHead
 
 	front := &FrontMiddleware{
 		ctl:         ctl,
-		accessChan:  make(chan *AccessLog, 200),
+		accessChan:  make(chan *AccessLog),
 		allowHeadrs: strings.Join(allowHeadrsArr, ","),
 		stopLog:     make(chan struct{}),
 	}
@@ -90,6 +92,7 @@ func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string, allowHead
 			case <-ticker.C:
 				front.dumpLogs()
 			case <-front.stopLog:
+				close(front.stopLog)
 				front.dumpLogs()
 				return
 			}
@@ -107,13 +110,29 @@ func (front *FrontMiddleware) dumpLogs() {
 	defer dbc.Close()
 
 	uc := dbc.DB("").C("accessLogs")
-	bulk := uc.Bulk()
-	bulk.Unordered()
+	bulk1 := uc.Bulk()
+	bulk1.Unordered()
+	puc := dbc.DB("").C("accessLogsCounts")
+	bulk2 := puc.Bulk()
+	bulk2.Unordered()
+
+	pc := map[string]int{}
 	for _, v := range front.AccessLogs {
-		bulk.Insert(v)
+		bulk1.Insert(v)
+		pc[v.Path]++
 	}
 
-	if _, err := bulk.Run(); err != nil {
+	y, m, d := time.Now().UTC().Date()
+	D := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	for p, c := range pc {
+		bulk2.Upsert(bson.M{"Timed": D, "Path": p},
+			bson.M{"$inc": bson.M{"Count": c}},
+		)
+	}
+	if _, err := bulk1.Run(); err != nil {
+		front.ctl.Log().Error("FrontMiddleware: error db dumpLogs", zap.Error(err))
+	}
+	if _, err := bulk2.Run(); err != nil {
 		front.ctl.Log().Error("FrontMiddleware: error db dumpLogs", zap.Error(err))
 	}
 
@@ -132,9 +151,9 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 			rw.Header().Set("Vary", "Accept-Encoding")
 			rw.Header().Set("Access-Control-Allow-Origin", "*")
 			rw.Header().Set("Access-Control-Allow-Headers", front.allowHeadrs)
-			rw.Header().Set("X-Content-Type-Options", "nosniff")
+			/*rw.Header().Set("X-Content-Type-Options", "nosniff")
 			rw.Header().Set("x-frame-options", "SAMEORIGIN")
-			rw.Header().Set("x-xss-protection", "1; mode=block")
+			rw.Header().Set("x-xss-protection", "1; mode=block")*/
 
 			defer func() {
 				if err := recover(); err != nil {
@@ -153,20 +172,27 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 
 			next.ServeHTTP(rw, r)
 
-			front.accessChan <- &AccessLog{RemoteAddr: strings.Split(r.RemoteAddr, ":")[0],
+			uid := ""
+			if uidx := r.Context().Value(types.CTXUIDKey{}); uidx != nil {
+				uid = uidx.(string)
+			}
+			front.accessChan <- &AccessLog{
+				RemoteAddr:      strings.Split(r.RemoteAddr, ":")[0],
+				UID:             uid,
 				ReqContentType:  r.Header.Get("Content-Type"),
 				RespContentType: rw.Header().Get("Content-Type"),
 				ReqLength:       int(r.ContentLength),
 				RespLength:      rw.length,
 				Status:          rw.status,
-				Path:            r.URL.RequestURI(),
+				Path:            r.URL.Path,
+				Query:           r.URL.RawQuery,
 				Method:          r.Method,
 				Cached:          rw.Header().Get("X-Cache"),
 				Duration:        time.Since(sTime),
 				Timed:           sTime}
 
-			front.ctl.Log().Debug(r.URL.RequestURI(), zap.Int("status", rw.status),
-				zap.Duration("duration", time.Since(sTime)))
+			/*front.ctl.Log().Debug(r.URL.RequestURI(), zap.Int("status", rw.status),
+			zap.Duration("duration", time.Since(sTime)))*/
 		})
 	}
 }

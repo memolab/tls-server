@@ -17,8 +17,10 @@ type (
 	// MiddlewareHandler middleware http handler type
 	MiddlewareHandler func(http.Handler) http.Handler
 
-	// CTXKey for type context withvalue key
-	CTXKey string
+	// CTXUIDKey for type context withvalue key
+	CTXUIDKey struct{}
+	// CTXCACHEKey for type context withvalue key
+	CTXCACHEKey struct{}
 
 	// APICTL main api controller type
 	APICTL interface {

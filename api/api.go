@@ -68,6 +68,7 @@ func InitAPI(config map[string]string) *http.ServeMux {
 		if c.mongo != nil {
 			c.mongo.Close()
 		}
+		middlewares.CloseGlobalDumpDB()
 
 		c.auth.Close()
 		c.cache.Close()

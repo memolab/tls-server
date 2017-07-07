@@ -27,7 +27,7 @@ func (c *APICtl) indexHanler(rw http.ResponseWriter, r *http.Request) {
 func (c *APICtl) userIndexHanler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		uid := r.Context().Value(types.CTXKey("uid")).(string)
+		uid := r.Context().Value(types.CTXUIDKey{}).(string)
 		c.cache.RespJSON(rw, r, 200, map[string]interface{}{"msg": uid})
 
 	default:
@@ -52,7 +52,7 @@ func (c *APICtl) initDBHanler(rw http.ResponseWriter, r *http.Request) {
 		dbc := c.mongo.Copy()
 		defer dbc.Close()
 
-		uid := r.Context().Value(types.CTXKey("uid")).(string)
+		uid := r.Context().Value(types.CTXUIDKey{}).(string)
 
 		if !bytes.Equal([]byte(uid), []byte("557840937ab117f73048710c")) {
 			c.Abort(rw, http.StatusForbidden)

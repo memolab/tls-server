@@ -68,7 +68,7 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 				case "head":
 					_v = r.Header.Get(v)
 				case "tokenUID":
-					_v = r.Context().Value(types.CTXKey("uid")).(string)
+					_v = r.Context().Value(types.CTXUIDKey{}).(string)
 				}
 
 				if _v != "" {
@@ -96,7 +96,7 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 						}
 					}
 				}
-				r = r.WithContext(context.WithValue(r.Context(), types.CTXKey("cachein"), key))
+				*r = *r.WithContext(context.WithValue(r.Context(), types.CTXCACHEKey{}, key))
 			}
 
 			next.ServeHTTP(rw, r)
@@ -113,7 +113,7 @@ func (cache *CacheMiddleware) RespFlat(rw http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	if k := r.Context().Value(types.CTXKey("cachein")); k != nil && status == 200 {
+	if k := r.Context().Value(types.CTXCACHEKey{}); k != nil && status == 200 {
 		if key, ok := k.([]byte); ok && k != nil {
 			cache.writeCacheHandler(key, status, []byte("text/plain"), data)
 		}
@@ -135,7 +135,7 @@ func (cache *CacheMiddleware) RespJSON(rw http.ResponseWriter, r *http.Request, 
 	if _, werr := rw.Write(b); werr != nil {
 		cache.ctl.Log().Error("MiddlewareCache:  error json response writer", zap.Error(werr))
 		return
-	} else if k := r.Context().Value(types.CTXKey("cachein")); k != nil && status == 200 {
+	} else if k := r.Context().Value(types.CTXCACHEKey{}); k != nil && status == 200 {
 		if key, ok := k.([]byte); ok && k != nil {
 			cache.writeCacheHandler(key, status, []byte("application/json"), b)
 		}
