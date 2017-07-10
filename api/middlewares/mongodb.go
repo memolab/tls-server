@@ -15,7 +15,7 @@ var (
 	devMode bool
 )
 
-func GetOverview(re *[]AccessLog, find bson.M, sort []string) error {
+func GetOverview(re *[]AccessLogCount, find bson.M, sort []string) error {
 	dbc := dumpDB.Copy()
 	defer dbc.Close()
 
@@ -33,7 +33,40 @@ func GetAccesslogs(re *[]AccessLog, find bson.M, sort []string) error {
 	return dbc.DB("").C("accessLogs").Find(find).Sort(sort...).All(re)
 }
 
-func CreateDumpDBIndexs() []error {
+func explain(qry *mgo.Query) {
+	if !devMode {
+		return
+	}
+
+	exp := bson.M{}
+	if err := qry.Explain(exp); err == nil {
+		expd, _ := json.MarshalIndent(exp, "", " ")
+		fmt.Println(string(expd))
+	}
+}
+
+func InitGlobalDumpDB(dumpDBConfig string, prod string) {
+	mgoConn, err := mgo.DialWithTimeout(dumpDBConfig, 3*time.Second)
+	if err != nil {
+		log.Fatal("Middlewares: initGlobalDumpDB conn ", "err ", err)
+		return
+	}
+	mgoConn.SetMode(mgo.Monotonic, true)
+
+	if prod == "0" {
+		devMode = true
+	}
+
+	dumpDB = mgoConn
+
+	ensureIndexsDumpDB()
+}
+
+func CloseGlobalDumpDB() {
+	dumpDB.Close()
+}
+
+func ensureIndexsDumpDB() []error {
 	indxs := map[string][]mgo.Index{
 		"accessLogs": []mgo.Index{
 			mgo.Index{Key: []string{"-Timed", "Path"},
@@ -67,36 +100,4 @@ func CreateDumpDBIndexs() []error {
 	}
 
 	return errs
-}
-
-func explain(qry *mgo.Query) {
-	if !devMode {
-		return
-	}
-
-	exp := bson.M{}
-	if err := qry.Explain(exp); err == nil {
-		expd, _ := json.MarshalIndent(exp, "", " ")
-		fmt.Println(string(expd))
-	}
-}
-
-func InitGlobalDumpDB(dumpDBConfig string, prod string) {
-	mgoConn, err := mgo.DialWithTimeout(dumpDBConfig, 3*time.Second)
-	if err != nil {
-		log.Fatal("Middlewares: initGlobalDumpDB conn ", "err ", err)
-		return
-	}
-	mgoConn.SetMode(mgo.Monotonic, true)
-
-	if prod == "0" {
-		devMode = true
-	}
-
-	dumpDB = mgoConn
-	CreateDumpDBIndexs()
-}
-
-func CloseGlobalDumpDB() {
-	dumpDB.Close()
 }

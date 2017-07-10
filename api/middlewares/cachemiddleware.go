@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -90,8 +91,8 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 							cache.ctl.Log().Error("MiddlewareCache: error ResponseWriter", zap.Error(err))
 						} else {
 							rw.Header().Set("X-Cache", string(key))
-							cache.ctl.Log().Debug("MiddlewareCache: serve from cache", zap.String("fullPath", r.URL.RequestURI()),
-								zap.ByteString("key", key), zap.Int("length", rwLen))
+							/*cache.ctl.Log().Debug("MiddlewareCache: serve from cache", zap.String("fullPath", r.URL.RequestURI()),
+							zap.ByteString("key", key), zap.Int("length", rwLen))*/
 							return
 						}
 					}
@@ -178,6 +179,6 @@ func (cache *CacheMiddleware) LogInfo() {
 }
 
 // Close end any pinding tasks
-func (cache *CacheMiddleware) Close() {
+func (cache *CacheMiddleware) Close(wg *sync.WaitGroup) {
 	cache.db.Close()
 }

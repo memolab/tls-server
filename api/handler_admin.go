@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 	"tls-server/api/middlewares"
 	"tls-server/utils"
@@ -21,7 +20,7 @@ func (c *APICtl) adminIndexHanler(rw http.ResponseWriter, r *http.Request) {
 			c.Abort(rw, http.StatusForbidden)
 			return
 		}*/
-		c.RespJSON(rw, 200, map[string]interface{}{"msg": "Admin Index Api"})
+		c.RespJSON(rw, 200, map[string]interface{}{"msg": "AdminAPI Index"})
 
 	case "POST":
 		params := struct {
@@ -74,15 +73,30 @@ func (c *APICtl) adminIndexHanler(rw http.ResponseWriter, r *http.Request) {
 func (c *APICtl) adminOverviewHanler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		/*re := []middlewares.AccessLog{}
+		re := []middlewares.AccessLogCount{}
 		sel := bson.M{}
+		ords := map[string]string{
+			"t":  "-Timed",
+			"t2": "Timed",
+			"c":  "-Count",
+			"c2": "Count",
+		}
 
 		if duration, err := time.ParseDuration(r.FormValue("in")); err == nil {
 			sel["Timed"] = bson.M{"$gt": time.Now().UTC().Add(duration)}
 		} else {
-			sel["Timed"] = bson.M{"$gt": time.Now().UTC().Add(-1 * time.Hour)}
-		}*/
-		//
+			sel["Timed"] = bson.M{"$gt": time.Now().UTC().Add(-6 * time.Hour)}
+		}
+
+		ord := []string{}
+		if vord, ok := ords[r.FormValue("ord")]; ok {
+			ord = append(ord, vord)
+		}
+
+		if err := middlewares.GetOverview(&re, sel, ord); err != nil {
+			c.Abort(rw, 404)
+		}
+		c.RespJSON(rw, 200, re)
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)
@@ -104,10 +118,10 @@ func (c *APICtl) adminAccesslogsHanler(rw http.ResponseWriter, r *http.Request) 
 		if duration, err := time.ParseDuration(r.FormValue("in")); err == nil {
 			sel["Timed"] = bson.M{"$gt": time.Now().UTC().Add(duration)}
 		} else {
-			sel["Timed"] = bson.M{"$gt": time.Now().UTC().Add(-1 * time.Hour)}
+			sel["Timed"] = bson.M{"$gt": time.Now().UTC().Add(-6 * time.Hour)}
 		}
 
-		if st, err := strconv.Atoi(r.FormValue("status")); err == nil {
+		/*if st, err := strconv.Atoi(r.FormValue("status")); err == nil {
 			sel["Status"] = bson.M{"$eq": st}
 		}
 
@@ -117,7 +131,7 @@ func (c *APICtl) adminAccesslogsHanler(rw http.ResponseWriter, r *http.Request) 
 			} else if ca == 2 { //cached
 				sel["cached"] = bson.M{"$ne": "null"}
 			}
-		}
+		}*/
 
 		ord := []string{}
 		if vord, ok := ords[r.FormValue("ord")]; ok {

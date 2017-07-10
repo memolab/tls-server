@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -45,6 +46,7 @@ type FrontMiddleware struct {
 	accessChan  chan *AccessLog
 	allowHeadrs string
 	stopLog     chan struct{}
+	Closed      *sync.WaitGroup
 }
 
 type AccessLog struct {
@@ -62,6 +64,12 @@ type AccessLog struct {
 	Cached          string        `bson:"Cached"`
 	Duration        time.Duration `bson:"Duration"` // get time duration in Nanosecond
 	Timed           time.Time     `bson:"Timed"`
+}
+type AccessLogCount struct {
+	ID    bson.ObjectId `bson:"_id,omitempty"`
+	Path  string        `bson:"Path"`
+	Count int           `bson:"Count"`
+	Timed time.Time     `bson:"Timed"`
 }
 
 func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string, allowHeadrs string) *FrontMiddleware {
@@ -84,7 +92,10 @@ func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string, allowHead
 
 	go func() {
 		ticker := time.NewTicker(dumpDuration)
-		defer ticker.Stop()
+		defer func() {
+			ticker.Stop()
+			front.Closed.Done()
+		}()
 		for {
 			select {
 			case a := <-front.accessChan:
@@ -203,6 +214,8 @@ func (front *FrontMiddleware) LogInfo() {
 }
 
 // Close end any pinding tasks
-func (front *FrontMiddleware) Close() {
+func (front *FrontMiddleware) Close(wg *sync.WaitGroup) {
+	wg.Add(1)
+	front.Closed = wg
 	front.stopLog <- struct{}{}
 }

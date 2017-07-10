@@ -26,6 +26,7 @@ type AuthMiddleware struct {
 	scCookie       *securecookie.SecureCookie
 	dumpDuration   time.Duration
 	stopLog        chan struct{}
+	Closed         *sync.WaitGroup
 }
 
 type rateLimiter struct {
@@ -73,14 +74,17 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 
 	go func() {
 		ticker := time.NewTicker(dumpDuration)
-		defer ticker.Stop()
+		defer func() {
+			ticker.Stop()
+			auth.Closed.Done()
+		}()
 		for {
 			select {
 			case <-ticker.C:
-				auth.dumpLogs()
+				auth.dumpLogs(false)
 			case <-auth.stopLog:
 				close(auth.stopLog)
-				auth.dumpLogs()
+				auth.dumpLogs(true)
 				return
 			}
 		}
@@ -89,7 +93,7 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 	return auth
 }
 
-func (auth *AuthMiddleware) dumpLogs() {
+func (auth *AuthMiddleware) dumpLogs(force bool) {
 	if !(len(auth.rateLimit.clients) > 0) {
 		return
 	}
@@ -97,7 +101,7 @@ func (auth *AuthMiddleware) dumpLogs() {
 	clientsLog := map[string]*rateLimiterClient{}
 	auth.rateLimit.syncMtx.Lock()
 	for k, v := range auth.rateLimit.clients {
-		if time.Now().UTC().Sub(v.time) >= auth.dumpDuration {
+		if force || time.Now().UTC().Sub(v.time) >= auth.dumpDuration {
 			clientsLog[k] = v
 			delete(auth.rateLimit.clients, k)
 		}
@@ -201,7 +205,6 @@ func (auth *AuthMiddleware) checkRateLimit(uid string, limitDuration time.Durati
 		cu.count = 1
 		cu.time = t
 	}
-	//auth.rateLimit.clients[uid] = cu
 	return re
 }
 
@@ -235,6 +238,8 @@ func (auth *AuthMiddleware) LogInfo() {
 }
 
 // Close stop dump data
-func (auth *AuthMiddleware) Close() {
+func (auth *AuthMiddleware) Close(wg *sync.WaitGroup) {
+	wg.Add(1)
+	auth.Closed = wg
 	auth.stopLog <- struct{}{}
 }

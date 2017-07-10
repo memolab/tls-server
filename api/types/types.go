@@ -2,6 +2,7 @@ package types
 
 import (
 	"net/http"
+	"sync"
 
 	"go.uber.org/zap"
 )
@@ -11,7 +12,7 @@ type (
 	// Middleware type interface
 	Middleware interface {
 		Handler() MiddlewareHandler
-		Close()
+		Close(wg *sync.WaitGroup)
 	}
 
 	// MiddlewareHandler middleware http handler type

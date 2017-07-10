@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -68,13 +69,15 @@ func InitAPI(config map[string]string) *http.ServeMux {
 		if c.mongo != nil {
 			c.mongo.Close()
 		}
-		middlewares.CloseGlobalDumpDB()
 
-		c.auth.Close()
-		c.cache.Close()
+		var wg sync.WaitGroup
+		c.cache.Close(nil)
+		c.auth.Close(&wg)
 		for _, m := range c.regMidd {
-			m.Close()
+			m.Close(&wg)
 		}
+		wg.Wait()
+		middlewares.CloseGlobalDumpDB()
 
 		if err != nil {
 			log.Warn("server shutdown error", zap.Error(err))
