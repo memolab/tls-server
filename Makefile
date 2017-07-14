@@ -7,3 +7,7 @@ flatcAPI:
 
 flatcJS:
 	cd public/js/ && flatc --js --no-js-exports middCache.fbs 
+
+
+flatcTest:
+	flatc -g api/structsz/schema_objs.fbs

@@ -87,7 +87,7 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 						rw.Header().Set("Content-Type", string(obj.ContentType()))
 						rw.WriteHeader(int(obj.Status()))
 
-						if rwLen, err := rw.Write(obj.Body()); err != nil {
+						if _, err := rw.Write(obj.Body()); err != nil {
 							cache.ctl.Log().Error("MiddlewareCache: error ResponseWriter", zap.Error(err))
 						} else {
 							rw.Header().Set("X-Cache", string(key))

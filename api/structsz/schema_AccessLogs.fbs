@@ -1,0 +1,27 @@
+namespace api.structsz.accessLogs;
+
+table AccessLog{
+	ID:string;
+	RemoteAddr:string;
+	UID:string;
+	ReqContentType:string;
+	RespContentType:string;
+	ReqLength:int;
+	RespLength:int;
+	Status:int;
+	Path:string;
+	Query:string;
+	Method:string;
+	Cached:string;
+	Duration:ulong;
+	Timed:ulong;
+}
+
+table AccessLogs {
+  List: [AccessLog];
+}
+
+root_type AccessLogs;
+
+
+
