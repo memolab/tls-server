@@ -39,7 +39,7 @@ func (c *APICtl) user2IndexHanler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		data := c.cache.Get([]byte("/user;593c4d4d45cf2708b6cb532d"))
-		c.cache.RespFlat(rw, r, 200, data)
+		c.RespFlat(rw, 200, data)
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)

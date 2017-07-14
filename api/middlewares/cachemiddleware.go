@@ -87,7 +87,7 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 						rw.Header().Set("Content-Type", string(obj.ContentType()))
 						rw.WriteHeader(int(obj.Status()))
 
-						if rwLen, err := rw.Write(obj.Body()); err != nil {
+						if _, err := rw.Write(obj.Body()); err != nil {
 							cache.ctl.Log().Error("MiddlewareCache: error ResponseWriter", zap.Error(err))
 						} else {
 							rw.Header().Set("X-Cache", string(key))
@@ -106,7 +106,7 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 }
 
 func (cache *CacheMiddleware) RespFlat(rw http.ResponseWriter, r *http.Request, status int, data []byte) {
-	rw.Header().Set("Content-Type", "text/plain")
+	rw.Header().Set("Content-Type", "arraybuffer")
 
 	rw.WriteHeader(status)
 	if _, werr := rw.Write(data); werr != nil {
@@ -116,7 +116,7 @@ func (cache *CacheMiddleware) RespFlat(rw http.ResponseWriter, r *http.Request, 
 
 	if k := r.Context().Value(types.CTXCACHEKey{}); k != nil && status == 200 {
 		if key, ok := k.([]byte); ok && k != nil {
-			cache.writeCacheHandler(key, status, []byte("text/plain"), data)
+			cache.writeCacheHandler(key, status, []byte("arraybuffer"), data)
 		}
 	}
 }
@@ -180,5 +180,6 @@ func (cache *CacheMiddleware) LogInfo() {
 
 // Close end any pinding tasks
 func (cache *CacheMiddleware) Close(wg *sync.WaitGroup) {
+	//cache.LogInfo()
 	cache.db.Close()
 }

@@ -104,7 +104,7 @@ func applyMiddlewares(h http.Handler, handlers ...types.MiddlewareHandler) http.
 
 // RespFlat responce data bytes as text plain content type
 func (c *APICtl) RespFlat(rw http.ResponseWriter, status int, data []byte) {
-	rw.Header().Set("Content-Type", "text/plain")
+	rw.Header().Set("Content-Type", "arraybuffer")
 	rw.WriteHeader(status)
 	if _, err := rw.Write(data); err != nil {
 		c.log.Error("Error response writer", zap.Error(err))

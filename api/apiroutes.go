@@ -66,7 +66,7 @@ func initRoutes(c *APICtl, config map[string]string) *[]route {
 			url:     "/user2",
 			handler: c.user2IndexHanler,
 			middlewares: []types.MiddlewareHandler{
-				c.cache.CacheHandler("/user2", map[string]string{"tokenUID": ""}, d5min),
+				//c.cache.CacheHandler("/user2", map[string]string{"tokenUID": ""}, d5min),
 				middAuth, middFront},
 		},
 
