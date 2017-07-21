@@ -46,7 +46,8 @@ func (c *APICtl) signInHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if token, err := c.auth.NewSecretToken(user.ID.Hex()); err == nil {
+		id, _ := user.ID.MarshalText()
+		if token, err := c.auth.NewSecretToken(id); err == nil {
 			c.RespJSON(rw, http.StatusOK, struct {
 				User  UserLoged `json:"user"`
 				Token string    `json:"token"`
@@ -102,7 +103,8 @@ func (c *APICtl) signUpHandler(rw http.ResponseWriter, r *http.Request) {
 		user.Dated = &dated
 		user.Updated = &dated
 
-		if token, err = c.auth.NewSecretToken(user.ID.Hex()); err != nil {
+		id, _ := user.ID.MarshalText()
+		if token, err = c.auth.NewSecretToken(id); err != nil {
 			c.log.Error("gen NewSecretToken", zap.Error(err))
 			c.Abort(rw, http.StatusInternalServerError)
 			return

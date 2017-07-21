@@ -42,6 +42,7 @@ func setup() {
 
 	scCookie = securecookie.New([]byte(config["secretKey1"]), []byte(config["secretKey2"]))
 	scCookie.MaxAge(0)
+	scCookie.SetSerializer(securecookie.NopEncoder{})
 
 	mux = api.InitAPI(config)
 	addr = config["addr"]
@@ -78,7 +79,8 @@ func signUserToken(uid string) {
 	var err error
 	var token string
 
-	if token, err = scCookie.Encode("i", uid); err != nil {
+	id := []byte(uid)
+	if token, err = scCookie.Encode("i", id); err != nil {
 		log.Fatal("Error generate token: ", token, err)
 	}
 

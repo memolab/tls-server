@@ -41,7 +41,7 @@ func main() {
 		Addr:              config["addr"],
 		ReadTimeout:       5 * time.Second,
 		ReadHeaderTimeout: 2 * time.Second,
-		WriteTimeout:      8 * time.Second,
+		WriteTimeout:      5 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		TLSConfig: &tls.Config{
 			// knownGoodCipherSuites

@@ -47,6 +47,7 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 
 	scCookie := securecookie.New([]byte(configSecretKey1), []byte(configSecretKey2))
 	scCookie.MaxAge(0)
+	scCookie.SetSerializer(securecookie.NopEncoder{})
 
 	rateLimiteConf := strings.Split(configRateLimiteAPI, ":")
 	c, erri := strconv.Atoi(rateLimiteConf[0])
@@ -140,15 +141,16 @@ func (auth *AuthMiddleware) dumpLogs(force bool) {
 func (auth *AuthMiddleware) Handler() types.MiddlewareHandler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			uid := ""
+			uid := make([]byte, 24)
 
 			if err := auth.ParseSecretToken(r, &uid); err != nil {
 				auth.ctl.Abort(rw, http.StatusForbidden)
 				return
 			}
-			if uid != "" && bson.IsObjectIdHex(uid) {
-				*r = *r.WithContext(context.WithValue(r.Context(), types.CTXUIDKey{}, uid))
-				if auth.checkRateLimit(uid, auth.rateLimit.duration, auth.rateLimit.count, "tkn") {
+			uidStr := string(uid)
+			if bson.IsObjectIdHex(uidStr) {
+				*r = *r.WithContext(context.WithValue(r.Context(), types.CTXUIDKey{}, uidStr))
+				if auth.checkRateLimit(uidStr, auth.rateLimit.duration, auth.rateLimit.count, "tkn") {
 					auth.ctl.Abort(rw, http.StatusTooManyRequests)
 					return
 				}
@@ -162,7 +164,7 @@ func (auth *AuthMiddleware) Handler() types.MiddlewareHandler {
 }
 
 // ParseSecretToken parse header token value
-func (auth *AuthMiddleware) ParseSecretToken(r *http.Request, tokenVal *string) error {
+func (auth *AuthMiddleware) ParseSecretToken(r *http.Request, tokenVal *[]byte) error {
 	token := r.Header.Get(auth.headerTokenKey)
 	if token == "" {
 		token = r.URL.Query().Get(auth.headerTokenKey)
@@ -176,7 +178,7 @@ func (auth *AuthMiddleware) ParseSecretToken(r *http.Request, tokenVal *string) 
 }
 
 // NewSecretToken generate encoded token
-func (auth *AuthMiddleware) NewSecretToken(tokenVal string) (encoded string, err error) {
+func (auth *AuthMiddleware) NewSecretToken(tokenVal []byte) (encoded string, err error) {
 	encoded, err = auth.scCookie.Encode("i", tokenVal)
 	return
 }

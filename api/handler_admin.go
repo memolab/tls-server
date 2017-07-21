@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 	"tls-server/api/middlewares"
+	"tls-server/api/structsz/accessLogs"
 	"tls-server/utils"
 
 	"golang.org/x/crypto/bcrypt"
@@ -53,7 +54,8 @@ func (c *APICtl) adminIndexHanler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if token, err := c.auth.NewSecretToken(user.ID.Hex()); err == nil {
+		id, _ := user.ID.MarshalText()
+		if token, err := c.auth.NewSecretToken(id); err == nil {
 			c.RespJSON(rw, http.StatusOK, struct {
 				User  UserLoged `json:"user"`
 				Token string    `json:"token"`
@@ -141,7 +143,7 @@ func (c *APICtl) adminAccesslogsHanler(rw http.ResponseWriter, r *http.Request) 
 		if err := middlewares.GetAccesslogs(&re, sel, ord); err != nil {
 			c.Abort(rw, 404)
 		}
-		c.RespJSON(rw, 200, re)
+		c.RespFlat(rw, 200, accessLogs.MakeAccessLogs(re))
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)

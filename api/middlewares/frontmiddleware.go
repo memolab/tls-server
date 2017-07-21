@@ -202,8 +202,8 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 				Duration:        time.Since(sTime),
 				Timed:           sTime}
 
-			/*front.ctl.Log().Debug(r.URL.RequestURI(), zap.Int("status", rw.status),
-			zap.Duration("duration", time.Since(sTime)))*/
+			front.ctl.Log().Debug(r.URL.RequestURI(), zap.Int("status", rw.status),
+				zap.Duration("duration", time.Since(sTime)))
 		})
 	}
 }

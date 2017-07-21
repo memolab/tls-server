@@ -5,7 +5,7 @@
   "dumpDB":"mongodb://localhost/app-go-db-logsDump",
   "accessLogsDump":"30s",
   "headerTokenKey": "X-Access-Token",
-  "rateLimiteAPI":"80:60s",
+  "rateLimiteAPI":"60:60s",
   "rateLimiteIP":"8:30s",
   "rateLimiteLogsDump":"70s",
   "headerClientIPs":"X-Forwarded-For,X-Real-Ip",
