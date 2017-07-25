@@ -151,6 +151,7 @@ func (front *FrontMiddleware) dumpLogs() {
 }
 
 // Handler impl middleware handler
+// apply base requstes requirmint, logs and statistics
 func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(_rw http.ResponseWriter, r *http.Request) {

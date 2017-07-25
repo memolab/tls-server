@@ -138,6 +138,8 @@ func (c *APICtl) adminAccesslogsHanler(rw http.ResponseWriter, r *http.Request) 
 		ord := []string{}
 		if vord, ok := ords[r.FormValue("ord")]; ok {
 			ord = append(ord, vord)
+		} else {
+			ord = append(ord, ords["t"])
 		}
 
 		if err := middlewares.GetAccesslogs(&re, sel, ord); err != nil {

@@ -26,7 +26,7 @@ func TestUserHandler(t *testing.T) {
 	}
 }
 
-// go test ./tests -run ^% -bench ^BenchmarkUserHandler$ -benchtime 80s -v
+// go test ./tests -run ^$ -bench ^BenchmarkUserHandler$ -benchtime 80s -v
 
 func BenchmarkUserHandler(b *testing.B) {
 	serve := newServing()

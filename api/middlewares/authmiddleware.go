@@ -17,7 +17,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// MiddlewareAuth a middleware token authorization
+// AuthMiddleware a middleware token authorization
 // using securecookie.SecureCookie for encode/decode
 type AuthMiddleware struct {
 	ctl            types.APICTL
