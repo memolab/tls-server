@@ -41,3 +41,10 @@ func TestValidationStruct(t *testing.T) {
 	}
 
 }
+
+func TestGenTUID(t *testing.T) {
+	s := utils.GenTUID()
+	if len(s) != 12 {
+		t.Errorf("invaled len of utils.GenTUID got: %v", s)
+	}
+}

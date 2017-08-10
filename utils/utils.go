@@ -32,8 +32,8 @@ func GenTUID() string {
 	buff := make([]byte, 2)
 	_, err := rand.Read(buff)
 	if err == nil {
-		return fmt.Sprintf("%x%s", buff, fmt.Sprintf("%x", uint64(time.Now().UTC().UnixNano()))[8:])
+		return fmt.Sprintf("%x%s", buff, fmt.Sprintf("%x", time.Now().UTC().UnixNano())[8:])
 	}
 
-	return fmt.Sprintf("%x", uint64(time.Now().UTC().UnixNano()))[4:]
+	return fmt.Sprintf("%x", time.Now().UTC().UnixNano())[4:]
 }

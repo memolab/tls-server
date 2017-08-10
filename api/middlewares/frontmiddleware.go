@@ -85,7 +85,7 @@ func NewFrontMiddleware(ctl types.APICTL, configAccessLogsDump string, allowHead
 
 	front := &FrontMiddleware{
 		ctl:         ctl,
-		accessChan:  make(chan *AccessLog),
+		accessChan:  make(chan *AccessLog, 500),
 		allowHeadrs: strings.Join(allowHeadrsArr, ","),
 		stopLog:     make(chan struct{}),
 	}
@@ -133,12 +133,12 @@ func (front *FrontMiddleware) dumpLogs() {
 		pc[v.Path]++
 	}
 
-	y, m, d := time.Now().UTC().Date()
-	D := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	now := time.Now().UTC()
+	y, m, d := now.Date()
+
+	D := time.Date(y, m, d, now.Hour(), 0, 0, 0, time.UTC)
 	for p, c := range pc {
-		bulk2.Upsert(bson.M{"Timed": D, "Path": p},
-			bson.M{"$inc": bson.M{"Count": c}},
-		)
+		bulk2.Upsert(bson.M{"Timed": D, "Path": p}, bson.M{"$inc": bson.M{"Count": c}})
 	}
 	if _, err := bulk1.Run(); err != nil {
 		front.ctl.Log().Error("FrontMiddleware: error db dumpLogs", zap.Error(err))
