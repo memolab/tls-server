@@ -129,6 +129,16 @@ func (c *APICtl) RespJSON(rw http.ResponseWriter, status int, data interface{}) 
 	}
 }
 
+// RespJSONRaw responce data as json content type
+func (c *APICtl) RespJSONRaw(rw http.ResponseWriter, status int, data []byte) {
+	rw.Header().Set("Content-Type", "application/json")
+
+	rw.WriteHeader(status)
+	if _, errw := rw.Write(data); errw != nil {
+		c.log.Error("Error jsonraw response writer", zap.Error(errw))
+	}
+}
+
 // Abort responce status
 func (c *APICtl) Abort(rw http.ResponseWriter, status int) {
 	rw.Header().Set("Content-Type", "text/plain")

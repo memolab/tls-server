@@ -24,9 +24,10 @@ type AuthMiddleware struct {
 	headerTokenKey string
 	rateLimit      *rateLimiter
 	scCookie       *securecookie.SecureCookie
-	dumpDuration   time.Duration
-	stopLog        chan struct{}
-	Closed         *sync.WaitGroup
+	// dumpDuration must be gt rateLimiteAPI OR rateLimiteIP duration
+	dumpDuration time.Duration
+	stopLog      chan struct{}
+	Closed       *sync.WaitGroup
 }
 
 type rateLimiter struct {

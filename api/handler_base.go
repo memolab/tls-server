@@ -17,7 +17,7 @@ func (c *APICtl) indexHanler(rw http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "GET":
-		c.RespJSON(rw, 200, map[string]interface{}{"msg": "Index Api"})
+		c.RespJSONRaw(rw, 200, []byte(`{"msg": "API Index"}`))
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)

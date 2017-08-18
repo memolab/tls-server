@@ -143,6 +143,16 @@ func (cache *CacheMiddleware) RespJSON(rw http.ResponseWriter, r *http.Request, 
 	}
 }
 
+// RespJSONRaw responce data as json content type
+func (cache *CacheMiddleware) RespJSONRaw(rw http.ResponseWriter, status int, data []byte) {
+	rw.Header().Set("Content-Type", "application/json")
+
+	rw.WriteHeader(status)
+	if _, errw := rw.Write(data); errw != nil {
+		cache.ctl.Log().Error("Error jsonraw response writer", zap.Error(errw))
+	}
+}
+
 // Get return bytes from cache db
 func (cache *CacheMiddleware) Get(key []byte) (data []byte) {
 	cache.db.View(func(tx *bolt.Tx) error {

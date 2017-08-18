@@ -14,20 +14,22 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
+// go test -race ./tests -run ^TestUserHandler$
 func TestUserHandler(t *testing.T) {
 	serve := newServing()
 	signUserToken("593c4d4d45cf2708b6cb532d")
 
-	for i := 0; i < 4; i++ {
-		w := serve("GET", "/user", ``)
-		if w.Code != http.StatusOK {
-			t.Errorf("Get /user returned %v. Expected %v", w.Code, http.StatusOK)
-		}
+	for i := 0; i < 60; i++ {
+		go func() {
+			w := serve("GET", "/user", ``)
+			if w.Code != http.StatusOK {
+				t.Errorf("Get /user returned %v. Expected %v", w.Code, http.StatusOK)
+			}
+		}()
 	}
 }
 
-// go test ./tests -run ^$ -bench ^BenchmarkUserHandler$ -benchtime 80s -v
-
+// go test ./tests -run ^$ -bench ^BenchmarkUserHandler$ -benchtime 5s -v
 func BenchmarkUserHandler(b *testing.B) {
 	serve := newServing()
 	signUserToken("593c4d4d45cf2708b6cb532d")
@@ -38,6 +40,7 @@ func BenchmarkUserHandler(b *testing.B) {
 
 }
 
+// go test ./tests -run ^$ -bench ^BenchmarkMakeListAccessLogs$
 func BenchmarkMakeListAccessLogs(b *testing.B) {
 	mgoConn, err := mgo.DialWithTimeout("mongodb://localhost/app-go-db-logsDump", 3*time.Second)
 	if err != nil {
@@ -60,7 +63,7 @@ func BenchmarkMakeListAccessLogs(b *testing.B) {
 
 	b.Run("getListJson", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			getListJson(list)
+			getListJSON(list)
 		}
 	})
 }
@@ -79,7 +82,7 @@ func getListBytes(list []middlewares.AccessLog) {
 		}
 	}
 }
-func getListJson(list []middlewares.AccessLog) {
+func getListJSON(list []middlewares.AccessLog) {
 	bts, err := json.Marshal(list)
 	if err != nil {
 		fmt.Errorf("Error json.Marshal", err)

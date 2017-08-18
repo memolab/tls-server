@@ -7,6 +7,27 @@ import (
 	"testing"
 )
 
+func TestIndex(t *testing.T) {
+	serve := newServing()
+
+	w1 := serve("GET", "/", ``)
+	if w1.Code != http.StatusOK {
+		t.Errorf("Get / returned %v. Expected %v", w1.Code, http.StatusOK)
+	}
+
+	re := &struct {
+		Msg string `json:"msg"`
+	}{}
+	if err := json.Unmarshal(w1.Body.Bytes(), re); err != nil {
+		t.Error("Get / returned pad resp 'json.Unmarshal' ")
+	}
+
+	if re.Msg != "API Index" {
+		t.Errorf("Get / returned %s. Expected %s", re.Msg, "API Index")
+	}
+
+}
+
 func TestToken(t *testing.T) {
 	serve := newServing()
 
