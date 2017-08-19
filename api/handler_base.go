@@ -28,7 +28,10 @@ func (c *APICtl) userIndexHanler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		uid := r.Context().Value(types.CTXUIDKey{}).(string)
-		c.cache.RespJSON(rw, r, 200, map[string]interface{}{"msg": uid})
+		msgb := []byte(`{"msg": "`)
+		msgb = append(msgb, uid...)
+		msgb = append(msgb, `"}`...)
+		c.cache.RespJSONRaw(rw, r, 200, msgb)
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)

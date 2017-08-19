@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	runtime.GOMAXPROCS((runtime.NumCPU() / 2) + 1)
 }
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 		ReadTimeout:       5 * time.Second,
 		ReadHeaderTimeout: 2 * time.Second,
 		WriteTimeout:      5 * time.Second,
-		IdleTimeout:       120 * time.Second,
+		IdleTimeout:       60 * time.Second,
 		TLSConfig: &tls.Config{
 			// knownGoodCipherSuites
 			// Causes servers to use Go's default ciphersuite preferences,

@@ -143,13 +143,18 @@ func (cache *CacheMiddleware) RespJSON(rw http.ResponseWriter, r *http.Request, 
 	}
 }
 
-// RespJSONRaw responce data as json content type
-func (cache *CacheMiddleware) RespJSONRaw(rw http.ResponseWriter, status int, data []byte) {
+// RespJSONRaw responce json content type with cachable
+func (cache *CacheMiddleware) RespJSONRaw(rw http.ResponseWriter, r *http.Request, status int, data []byte) {
 	rw.Header().Set("Content-Type", "application/json")
 
 	rw.WriteHeader(status)
-	if _, errw := rw.Write(data); errw != nil {
-		cache.ctl.Log().Error("Error jsonraw response writer", zap.Error(errw))
+	if _, werr := rw.Write(data); werr != nil {
+		cache.ctl.Log().Error("MiddlewareCache:  error json response writer", zap.Error(werr))
+		return
+	} else if k := r.Context().Value(types.CTXCACHEKey{}); k != nil && status == 200 {
+		if key, ok := k.([]byte); ok && k != nil {
+			cache.writeCacheHandler(key, status, []byte("application/json"), data)
+		}
 	}
 }
 

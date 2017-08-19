@@ -53,11 +53,16 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 	rateLimiteConf := strings.Split(configRateLimiteAPI, ":")
 	c, erri := strconv.Atoi(rateLimiteConf[0])
 	d, errs := time.ParseDuration(rateLimiteConf[1])
-	rateLimit := &rateLimiter{duration: d, count: c,
-		clients: map[string]*rateLimiterClient{},
-		syncMtx: &sync.Mutex{}}
 	if errs != nil || erri != nil {
 		ctl.Log().Error("AuthMiddleware: invalid RateLimit config", zap.Errors("erri,errs", []error{erri, errs}))
+	}
+	var rateLimit *rateLimiter
+	if c > 0 && d.Seconds() > 0 {
+		rateLimit = &rateLimiter{
+			duration: d, count: c,
+			clients: map[string]*rateLimiterClient{},
+			syncMtx: &sync.Mutex{},
+		}
 	}
 
 	dumpDuration, errd := time.ParseDuration(configRateLimiteLogsDump)
@@ -96,7 +101,7 @@ func NewAuthMiddleware(ctl types.APICTL, configHeaderTokenKey string,
 }
 
 func (auth *AuthMiddleware) dumpLogs(force bool) {
-	if !(len(auth.rateLimit.clients) > 0) {
+	if auth.rateLimit == nil || !(len(auth.rateLimit.clients) > 0) {
 		return
 	}
 
@@ -151,7 +156,7 @@ func (auth *AuthMiddleware) Handler() types.MiddlewareHandler {
 			uidStr := string(uid)
 			if bson.IsObjectIdHex(uidStr) {
 				*r = *r.WithContext(context.WithValue(r.Context(), types.CTXUIDKey{}, uidStr))
-				if auth.checkRateLimit(uidStr, auth.rateLimit.duration, auth.rateLimit.count, "tkn") {
+				if auth.rateLimit != nil && auth.checkRateLimit(uidStr, auth.rateLimit.duration, auth.rateLimit.count, "tkn") {
 					auth.ctl.Abort(rw, http.StatusTooManyRequests)
 					return
 				}
