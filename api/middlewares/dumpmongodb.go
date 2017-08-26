@@ -19,9 +19,9 @@ func GetOverview(re *[]AccessLogCount, find bson.M, sort []string) error {
 	dbc := dumpDB.Copy()
 	defer dbc.Close()
 
-	explain(dbc.DB("").C("accessLogsCount").Find(find).Sort(sort...))
+	explain(dbc.DB("").C("accessLogsCounts").Find(find).Sort(sort...))
 
-	return dbc.DB("").C("accessLogs").Find(find).Sort(sort...).All(re)
+	return dbc.DB("").C("accessLogsCounts").Find(find).Sort(sort...).All(re)
 }
 
 func GetAccesslogs(re *[]AccessLog, find bson.M, sort []string) error {
@@ -39,7 +39,7 @@ func explain(qry *mgo.Query) {
 	}
 
 	exp := bson.M{}
-	if err := qry.Explain(exp); err == nil {
+	if err := qry.Explain(&exp); err == nil {
 		expd, _ := json.MarshalIndent(exp, "", " ")
 		fmt.Println(string(expd))
 	}
@@ -51,7 +51,7 @@ func InitGlobalDumpDB(dumpDBConfig string, prod string) {
 		log.Fatal("Middlewares: initGlobalDumpDB conn ", "err ", err)
 		return
 	}
-	mgoConn.SetMode(mgo.Monotonic, true)
+	//mgoConn.SetMode(mgo.Monotonic, true)
 
 	if prod == "0" {
 		devMode = true
@@ -59,7 +59,7 @@ func InitGlobalDumpDB(dumpDBConfig string, prod string) {
 
 	dumpDB = mgoConn
 
-	ensureIndexsDumpDB()
+	//ensureIndexsDumpDB()
 }
 
 func CloseGlobalDumpDB() {

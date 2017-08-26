@@ -7,6 +7,7 @@ import (
 	"time"
 	"tls-server/api/middlewares"
 	"tls-server/api/structsz/accessLogs"
+	"tls-server/api/structsz/accesslogcounts"
 	"tls-server/utils"
 
 	"golang.org/x/crypto/bcrypt"
@@ -93,12 +94,15 @@ func (c *APICtl) adminOverviewHanler(rw http.ResponseWriter, r *http.Request) {
 		ord := []string{}
 		if vord, ok := ords[r.FormValue("ord")]; ok {
 			ord = append(ord, vord)
+		} else {
+			ord = append(ord, ords["t"])
 		}
 
 		if err := middlewares.GetOverview(&re, sel, ord); err != nil {
 			c.Abort(rw, 404)
+			return
 		}
-		c.RespJSON(rw, 200, re)
+		c.RespFlat(rw, 200, accesslogcounts.MakeAccessLogCounts(&re))
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)
@@ -144,8 +148,9 @@ func (c *APICtl) adminAccesslogsHanler(rw http.ResponseWriter, r *http.Request) 
 
 		if err := middlewares.GetAccesslogs(&re, sel, ord); err != nil {
 			c.Abort(rw, 404)
+			return
 		}
-		c.RespFlat(rw, 200, accessLogs.MakeAccessLogs(re))
+		c.RespFlat(rw, 200, accessLogs.MakeAccessLogs(&re))
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)

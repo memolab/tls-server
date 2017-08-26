@@ -78,6 +78,11 @@ func initRoutes(c *APICtl, config map[string]string) *[]route {
 			middlewares: []types.MiddlewareHandler{middFront},
 		},
 		route{
+			url:         "/admin/overview",
+			handler:     c.adminOverviewHanler,
+			middlewares: []types.MiddlewareHandler{middFront},
+		},
+		route{
 			url:         "/admin/accesslogs",
 			handler:     c.adminAccesslogsHanler,
 			middlewares: []types.MiddlewareHandler{isAdmin, middAuth, middFront},

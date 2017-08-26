@@ -65,6 +65,7 @@ func InitAPI(config map[string]string) *http.ServeMux {
 		mux.Handle(config["apiPrefix"]+r.url, applyMiddlewares(r.handler, r.middlewares...))
 	}
 
+	// shutdownAPI start shutdown steps
 	shutdownAPI = func(err error) {
 		if c.mongo != nil {
 			c.mongo.Close()

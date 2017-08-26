@@ -6,13 +6,13 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-// MakeListAccessLogs create MakeListAccessLogs bytes list
-func MakeAccessLogs(li []middlewares.AccessLog) []byte {
+// MakeListAccessLogs create AccessLog bytes list
+func MakeAccessLogs(li *[]middlewares.AccessLog) []byte {
 	b := flatbuffers.NewBuilder(0)
-	ln := len(li)
+	ln := len(*li)
 	arrLi := make([]flatbuffers.UOffsetT, ln)
 
-	for i, l := range li {
+	for i, l := range *li {
 		idP := b.CreateByteString([]byte(l.ID.Hex()))
 		uidP := b.CreateByteString([]byte(l.UID))
 		remoteAddrP := b.CreateByteString([]byte(l.RemoteAddr))

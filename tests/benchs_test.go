@@ -74,7 +74,7 @@ func BenchmarkMakeListAccessLogs(b *testing.B) {
 }
 
 func getListBytes(list []middlewares.AccessLog) {
-	bts := accessLogs.MakeAccessLogs(list)
+	bts := accessLogs.MakeAccessLogs(&list)
 	li := accessLogs.GetRootAsAccessLogs(bts, 0)
 	for j := 0; j < 5; j++ {
 		l := &accessLogs.AccessLog{}

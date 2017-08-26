@@ -1,0 +1,14 @@
+namespace api.structsz.accesslogcounts;
+
+table AccessLogCount{
+  ID:string;
+  Path:string;
+  Count:ulong;
+  Timed:ulong;
+}
+
+table AccessLogCounts {
+  List: [AccessLogCount];
+}
+
+root_type AccessLogCounts;
