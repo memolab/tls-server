@@ -15,7 +15,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func (c *APICtl) adminIndexHanler(rw http.ResponseWriter, r *http.Request) {
+func (c *APICtl) adminIndexHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		/*if !strings.HasPrefix(r.RemoteAddr, "127.0.0.1") {
@@ -73,7 +73,7 @@ func (c *APICtl) adminIndexHanler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *APICtl) adminOverviewHanler(rw http.ResponseWriter, r *http.Request) {
+func (c *APICtl) adminOverviewHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		re := []middlewares.AccessLogCount{}
@@ -109,7 +109,7 @@ func (c *APICtl) adminOverviewHanler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *APICtl) adminAccesslogsHanler(rw http.ResponseWriter, r *http.Request) {
+func (c *APICtl) adminAccesslogsHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		re := []middlewares.AccessLog{}

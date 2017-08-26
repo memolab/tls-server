@@ -36,7 +36,7 @@ func initRoutes(c *APICtl, config map[string]string) *[]route {
 		// API routes
 		route{
 			url:         "/",
-			handler:     c.indexHanler,
+			handler:     c.indexHandler,
 			middlewares: []types.MiddlewareHandler{middFront},
 		},
 		route{
@@ -52,12 +52,12 @@ func initRoutes(c *APICtl, config map[string]string) *[]route {
 
 		route{
 			url:         "/initdb",
-			handler:     c.initDBHanler,
+			handler:     c.initDBHandler,
 			middlewares: []types.MiddlewareHandler{middAuth, middFront},
 		},
 		route{
 			url:     "/user",
-			handler: c.userIndexHanler,
+			handler: c.userIndexHandler,
 			middlewares: []types.MiddlewareHandler{
 				c.cache.CacheHandler("/user", map[string]string{"tokenUID": ""}, d5min),
 				middAuth,
@@ -65,7 +65,7 @@ func initRoutes(c *APICtl, config map[string]string) *[]route {
 		},
 		route{
 			url:     "/user2",
-			handler: c.user2IndexHanler,
+			handler: c.user2IndexHandler,
 			middlewares: []types.MiddlewareHandler{
 				//c.cache.CacheHandler("/user2", map[string]string{"tokenUID": ""}, d5min),
 				middAuth, middFront},
@@ -74,17 +74,17 @@ func initRoutes(c *APICtl, config map[string]string) *[]route {
 		//Admin routes
 		route{
 			url:         "/admin",
-			handler:     c.adminIndexHanler,
+			handler:     c.adminIndexHandler,
 			middlewares: []types.MiddlewareHandler{middFront},
 		},
 		route{
 			url:         "/admin/overview",
-			handler:     c.adminOverviewHanler,
+			handler:     c.adminOverviewHandler,
 			middlewares: []types.MiddlewareHandler{middFront},
 		},
 		route{
 			url:         "/admin/accesslogs",
-			handler:     c.adminAccesslogsHanler,
+			handler:     c.adminAccesslogsHandler,
 			middlewares: []types.MiddlewareHandler{isAdmin, middAuth, middFront},
 		},
 	}

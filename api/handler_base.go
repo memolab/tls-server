@@ -9,7 +9,7 @@ import (
 	"tls-server/api/types"
 )
 
-func (c *APICtl) indexHanler(rw http.ResponseWriter, r *http.Request) {
+func (c *APICtl) indexHandler(rw http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		c.Abort(rw, 404)
 		return
@@ -24,7 +24,7 @@ func (c *APICtl) indexHanler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *APICtl) userIndexHanler(rw http.ResponseWriter, r *http.Request) {
+func (c *APICtl) userIndexHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		uid := r.Context().Value(types.CTXUIDKey{}).(string)
@@ -38,7 +38,7 @@ func (c *APICtl) userIndexHanler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *APICtl) user2IndexHanler(rw http.ResponseWriter, r *http.Request) {
+func (c *APICtl) user2IndexHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		data := c.cache.Get([]byte("/user;593c4d4d45cf2708b6cb532d"))
@@ -49,9 +49,9 @@ func (c *APICtl) user2IndexHanler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (c *APICtl) initDBHanler(rw http.ResponseWriter, r *http.Request) {
+func (c *APICtl) initDBHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
-	case "GET":
+	case "POST":
 		dbc := c.mongo.Copy()
 		defer dbc.Close()
 
@@ -65,6 +65,7 @@ func (c *APICtl) initDBHanler(rw http.ResponseWriter, r *http.Request) {
 		if err := createMongoIndexs(dbc); err != nil {
 			c.log.Error("create mongo indexs", zap.Error(err))
 			c.RespJSON(rw, 500, map[string]interface{}{"msg": err})
+			return
 		}
 
 		c.RespJSON(rw, 200, map[string]interface{}{"msg": "ok", "uid": uid})
