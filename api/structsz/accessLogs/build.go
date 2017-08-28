@@ -7,7 +7,7 @@ import (
 )
 
 // MakeListAccessLogs create AccessLog bytes list
-func MakeAccessLogs(li *[]middlewares.AccessLog) []byte {
+func MakeAccessLogs(li *[]middlewares.AccessLog) *[]byte {
 	b := flatbuffers.NewBuilder(0)
 	ln := len(*li)
 	arrLi := make([]flatbuffers.UOffsetT, ln)
@@ -54,5 +54,5 @@ func MakeAccessLogs(li *[]middlewares.AccessLog) []byte {
 
 	bts := b.Bytes[b.Head():]
 	b = nil
-	return bts
+	return &bts
 }

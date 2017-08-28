@@ -10,6 +10,6 @@ draft go api framework
     - IsAdminMiddleware
 - signin/signup user handlers
 - JSON validations and other Utils
-- example use for response flatebuffers
+- example use for response Flatbuffers
 - tests and benchmarks
 - ...

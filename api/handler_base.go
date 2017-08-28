@@ -17,7 +17,8 @@ func (c *APICtl) indexHandler(rw http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "GET":
-		c.RespJSONRaw(rw, 200, []byte(`{"msg": "API Index"}`))
+		byts := []byte(`{"msg": "API Index"}`)
+		c.RespJSONRaw(rw, 200, &byts)
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)
@@ -31,7 +32,7 @@ func (c *APICtl) userIndexHandler(rw http.ResponseWriter, r *http.Request) {
 		msgb := []byte(`{"msg": "`)
 		msgb = append(msgb, uid...)
 		msgb = append(msgb, `"}`...)
-		c.cache.RespJSONRaw(rw, r, 200, msgb)
+		c.cache.RespJSONRaw(rw, r, 200, &msgb)
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)
@@ -41,8 +42,9 @@ func (c *APICtl) userIndexHandler(rw http.ResponseWriter, r *http.Request) {
 func (c *APICtl) user2IndexHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		data := c.cache.Get([]byte("/user;593c4d4d45cf2708b6cb532d"))
-		c.RespFlat(rw, 200, data)
+		var data []byte
+		c.cache.Get([]byte("/user;593c4d4d45cf2708b6cb532d"), &data)
+		c.RespFlat(rw, 200, &data)
 
 	default:
 		c.Abort(rw, http.StatusMethodNotAllowed)

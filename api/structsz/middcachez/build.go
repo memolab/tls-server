@@ -6,13 +6,13 @@ import (
 	flatbuffers "github.com/google/flatbuffers/go"
 )
 
-// MakeCacheHandlersObj create return obj bytes
-func MakeCacheHandlersObj(status int, ContentType []byte, data []byte) []byte {
+// MakeCacheHandlersObj create return CacheHandlersObj bytes
+func MakeCacheHandlersObj(status int, ContentType []byte, data *[]byte) *[]byte {
 	b := flatbuffers.NewBuilder(0)
 	b.Reset()
 
 	contentTypeP := b.CreateByteString(ContentType)
-	dataP := b.CreateByteString(data)
+	dataP := b.CreateByteString(*data)
 
 	CacheHandlersObjStart(b)
 	CacheHandlersObjAddContentType(b, contentTypeP)
@@ -22,6 +22,7 @@ func MakeCacheHandlersObj(status int, ContentType []byte, data []byte) []byte {
 
 	bp := CacheHandlersObjEnd(b)
 	b.Finish(bp)
-
-	return b.Bytes[b.Head():]
+	bts := b.Bytes[b.Head():]
+	b = nil
+	return &bts
 }

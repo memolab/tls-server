@@ -18,11 +18,14 @@ func TestAdminOverview(t *testing.T) {
 
 	li := accesslogcounts.GetRootAsAccessLogCounts(w1.Body.Bytes(), 0)
 	alc := accesslogcounts.AccessLogCount{}
-	if !(li.List(&alc, 0)) {
-		t.Errorf("fail read accesslogcounts.AccessLogCount listing")
-	}
 
-	if !(alc.Count() > 0) {
-		t.Errorf("fail in accesslogcounts.AccessLogCount listing")
+	if li.ListLength() > 0 {
+		if !(li.List(&alc, 0)) {
+			t.Errorf("fail read accesslogcounts.AccessLogCount listing")
+
+			if !(alc.Count() > 0) {
+				t.Errorf("fail in accesslogcounts.AccessLogCount listing")
+			}
+		}
 	}
 }

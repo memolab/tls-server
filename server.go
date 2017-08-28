@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -42,7 +43,7 @@ func main() {
 		ReadTimeout:       5 * time.Second,
 		ReadHeaderTimeout: 2 * time.Second,
 		WriteTimeout:      5 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		IdleTimeout:       1 * time.Minute,
 		TLSConfig: &tls.Config{
 			// knownGoodCipherSuites
 			// Causes servers to use Go's default ciphersuite preferences,
@@ -78,13 +79,36 @@ func main() {
 		srv.Close()
 	}()
 
-	fmt.Printf("STARTING...Listen https://%s\n", config["addr"])
-	if err := srv.ListenAndServeTLS(fmt.Sprintf("certs/%s/cert.pem", certsdir), fmt.Sprintf("certs/%s/key.pem", certsdir)); err != nil && err.Error() != "http: Server closed" {
-		//fmt.Printf("STARTING...Listen http://%s\n", config["addr"])
-		//if err := srv.ListenAndServe(); err != nil && err.Error() != "http: Server closed" {
+	ln, err := net.Listen("tcp", srv.Addr)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("STARTING...Listen https://%s\n", srv.Addr)
+
+	if err := srv.ServeTLS(tcpKeepAliveListener{ln.(*net.TCPListener)}, fmt.Sprintf("certs/%s/cert.pem", certsdir), fmt.Sprintf("certs/%s/key.pem", certsdir)); err != nil && err.Error() != "http: Server closed" {
 		api.ShutdownAPI(err)
 		return
 	}
-
 	api.ShutdownAPI(nil)
+}
+
+// fetched from net/http/server.go to edit SetKeepAlivePeriod
+//
+// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
+// connections. It's used by ListenAndServe and ListenAndServeTLS so
+// dead TCP connections (e.g. closing laptop mid-download) eventually
+// go away.
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(1 * time.Minute)
+	return tc, nil
 }

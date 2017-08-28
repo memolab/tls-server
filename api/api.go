@@ -104,10 +104,10 @@ func applyMiddlewares(h http.Handler, handlers ...types.MiddlewareHandler) http.
 }
 
 // RespFlat responce data bytes as text plain content type
-func (c *APICtl) RespFlat(rw http.ResponseWriter, status int, data []byte) {
+func (c *APICtl) RespFlat(rw http.ResponseWriter, status int, data *[]byte) {
 	rw.Header().Set("Content-Type", "arraybuffer")
 	rw.WriteHeader(status)
-	if _, err := rw.Write(data); err != nil {
+	if _, err := rw.Write(*data); err != nil {
 		c.log.Error("Error response writer", zap.Error(err))
 		return
 	}
@@ -131,11 +131,11 @@ func (c *APICtl) RespJSON(rw http.ResponseWriter, status int, data interface{}) 
 }
 
 // RespJSONRaw responce data as json content type
-func (c *APICtl) RespJSONRaw(rw http.ResponseWriter, status int, data []byte) {
+func (c *APICtl) RespJSONRaw(rw http.ResponseWriter, status int, data *[]byte) {
 	rw.Header().Set("Content-Type", "application/json")
 
 	rw.WriteHeader(status)
-	if _, errw := rw.Write(data); errw != nil {
+	if _, errw := rw.Write(*data); errw != nil {
 		c.log.Error("Error jsonraw response writer", zap.Error(errw))
 	}
 }

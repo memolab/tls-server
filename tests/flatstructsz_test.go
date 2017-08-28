@@ -26,7 +26,7 @@ func TestMakeListAccessLogs(t *testing.T) {
 
 	bts := accessLogs.MakeAccessLogs(&list)
 
-	li := accessLogs.GetRootAsAccessLogs(bts, 0)
+	li := accessLogs.GetRootAsAccessLogs(*bts, 0)
 	for i := 0; i < 5; i++ {
 		l := &accessLogs.AccessLog{}
 		if li.List(l, i) {
