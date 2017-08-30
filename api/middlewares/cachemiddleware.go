@@ -79,9 +79,7 @@ func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]st
 
 			if len(keys) > 0 {
 				key := []byte(strings.Join(keys, ";"))
-				var bval []byte
-				cache.Get([]byte(key), &bval)
-
+				bval := cache.Get([]byte(key))
 				if bval != nil {
 					obj := middcachez.GetRootAsCacheHandlersObj(bval, 0)
 					if time.Now().Sub(time.Unix(obj.Timed(), 0)) <= expires {
@@ -160,9 +158,9 @@ func (cache *CacheMiddleware) RespJSONRaw(rw http.ResponseWriter, r *http.Reques
 }
 
 // Get return bytes from cache db
-func (cache *CacheMiddleware) Get(key []byte, data *[]byte) {
+func (cache *CacheMiddleware) Get(key []byte) (data []byte) {
 	cache.db.View(func(tx *bolt.Tx) error {
-		*data = tx.Bucket(cache.chBucket).Get(key)
+		copy(data, tx.Bucket(cache.chBucket).Get(key))
 		return nil
 	})
 	return

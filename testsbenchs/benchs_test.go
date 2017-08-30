@@ -14,7 +14,7 @@ import (
 	mgo "gopkg.in/mgo.v2"
 )
 
-// go test -race ./tests -run ^TestUserHandler$
+// go test -race ./testsbenchs -run ^TestUserHandler$
 func TestUserHandler(t *testing.T) {
 	serve := newServing()
 	signUserToken("593c4d4d45cf2708b6cb532d")
@@ -30,7 +30,7 @@ func TestUserHandler(t *testing.T) {
 
 }
 
-// go test ./tests -run ^$ -bench ^BenchmarkUserHandler$
+// go test ./testsbenchs -run ^$ -bench ^BenchmarkUserHandler$
 func BenchmarkUserHandler(b *testing.B) {
 	serve := newServing()
 	signUserToken("593c4d4d45cf2708b6cb532d")
@@ -45,7 +45,7 @@ func BenchmarkUserHandler(b *testing.B) {
 	}
 }
 
-// go test ./tests -run ^$ -bench ^BenchmarkMakeListAccessLogs$
+// go test ./testsbenchs -run ^$ -bench ^BenchmarkMakeListAccessLogs$
 func BenchmarkMakeListAccessLogs(b *testing.B) {
 	mgoConn, err := mgo.DialWithTimeout("mongodb://localhost/app-go-db-logsDump", 3*time.Second)
 	if err != nil {
@@ -75,7 +75,7 @@ func BenchmarkMakeListAccessLogs(b *testing.B) {
 
 func getListBytes(list []middlewares.AccessLog) {
 	bts := accessLogs.MakeAccessLogs(&list)
-	li := accessLogs.GetRootAsAccessLogs(bts, 0)
+	li := accessLogs.GetRootAsAccessLogs(*bts, 0)
 	for j := 0; j < 5; j++ {
 		l := &accessLogs.AccessLog{}
 		if li.List(l, j) {
