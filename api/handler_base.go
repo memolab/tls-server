@@ -42,8 +42,7 @@ func (c *APICtl) userIndexHandler(rw http.ResponseWriter, r *http.Request) {
 func (c *APICtl) user2IndexHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		var data []byte
-		c.cache.Get([]byte("/user;593c4d4d45cf2708b6cb532d"), &data)
+		data := c.cache.Get([]byte("/user;593c4d4d45cf2708b6cb532d"))
 		c.RespFlat(rw, 200, &data)
 
 	default:

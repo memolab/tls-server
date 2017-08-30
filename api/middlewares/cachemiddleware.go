@@ -160,7 +160,9 @@ func (cache *CacheMiddleware) RespJSONRaw(rw http.ResponseWriter, r *http.Reques
 // Get return bytes from cache db
 func (cache *CacheMiddleware) Get(key []byte) (data []byte) {
 	cache.db.View(func(tx *bolt.Tx) error {
-		copy(data, tx.Bucket(cache.chBucket).Get(key))
+		d := tx.Bucket(cache.chBucket).Get(key)
+		data = make([]byte, len(d))
+		copy(data, d)
 		return nil
 	})
 	return
