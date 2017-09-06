@@ -16,7 +16,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-// MiddlewareCache provide url resp cache
+// CacheMiddleware provide url resp cache
 type CacheMiddleware struct {
 	ctl      types.APICTL
 	db       *bolt.DB
@@ -161,8 +161,10 @@ func (cache *CacheMiddleware) RespJSONRaw(rw http.ResponseWriter, r *http.Reques
 func (cache *CacheMiddleware) Get(key []byte) (data []byte) {
 	cache.db.View(func(tx *bolt.Tx) error {
 		d := tx.Bucket(cache.chBucket).Get(key)
-		data = make([]byte, len(d))
-		copy(data, d)
+		if d != nil {
+			data = make([]byte, len(d))
+			copy(data, d)
+		}
 		return nil
 	})
 	return

@@ -156,13 +156,12 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(_rw http.ResponseWriter, r *http.Request) {
 			sTime := time.Now().UTC()
-
 			rw := &AResponseWriter{ResponseWriter: _rw, status: -1}
+
 			rw.Header().Set("Cache-Control", "no-cache, private")
 			rw.Header().Set("expires", "-1")
-			rw.Header().Set("Vary", "Accept-Encoding")
+			rw.Header().Set("Vary", "Accept-Encoding,Origin")
 			rw.Header().Set("Access-Control-Allow-Origin", "*")
-			rw.Header().Set("Access-Control-Allow-Headers", front.allowHeadrs)
 			/*rw.Header().Set("X-Content-Type-Options", "nosniff")
 			rw.Header().Set("x-frame-options", "SAMEORIGIN")
 			rw.Header().Set("x-xss-protection", "1; mode=block")*/
@@ -177,7 +176,10 @@ func (front *FrontMiddleware) Handler() types.MiddlewareHandler {
 				}
 			}()
 
-			if r.Method == "OPTIONS" || r.Method == "HEAD" {
+			if r.Method == "OPTIONS" {
+				rw.Header().Set("Access-Control-Allow-Headers", front.allowHeadrs)
+				rw.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+				rw.Header().Set("Access-Control-Max-Age", "86400")
 				front.ctl.Abort(rw, 200)
 				return
 			}
