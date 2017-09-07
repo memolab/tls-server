@@ -59,7 +59,7 @@ func initRoutes(c *APICtl, config map[string]string) *[]route {
 			url:     "/user",
 			handler: c.userIndexHandler,
 			middlewares: []types.MiddlewareHandler{
-				c.cache.CacheHandler("/user", map[string]string{"tokenUID": ""}, d5min),
+				c.cache.CacheHandler([]string{"GET", "/user"}, map[string]string{"tokenUID": "tkn"}, d5min),
 				middAuth,
 				middFront},
 		},
@@ -67,7 +67,7 @@ func initRoutes(c *APICtl, config map[string]string) *[]route {
 			url:     "/user2",
 			handler: c.user2IndexHandler,
 			middlewares: []types.MiddlewareHandler{
-				//c.cache.CacheHandler("/user2", map[string]string{"tokenUID": ""}, d5min),
+				//c.cache.CacheHandler([]string{"GET", "/user2"}, map[string]string{"tokenUID": "tkn"}, d5min),
 				middAuth, middFront},
 		},
 

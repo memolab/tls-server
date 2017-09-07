@@ -82,7 +82,7 @@ func TestCache(t *testing.T) {
 		}
 
 		if i > 3 {
-			if w.Header().Get("X-Cache") != "/user;557840937ab117f73048710c" {
+			if w.Header().Get("X-Cache") != "GET/usertkn557840937ab117f73048710c" {
 				t.Errorf("Get /user faild X-Cache header %s. Expected %s", w.Header().Get("X-Cache"), "/user;557840937ab117f73048710c")
 			}
 		}

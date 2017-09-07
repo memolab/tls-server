@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 	"tls-server/api/structsz/middcachez"
 	"tls-server/api/types"
+	"tls-server/utils"
 
 	"github.com/boltdb/bolt"
 )
@@ -29,10 +31,19 @@ func NewCacheMiddleware(ctl types.APICTL) *CacheMiddleware {
 		ctl.Log().Error("MiddlewareCache: error init bolt db, values: caching.db,0600,timeout:1", zap.Error(err))
 	}
 
+	chBucketName := []byte("ch")
+	errtbl := db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists(chBucketName)
+		return err
+	})
+	if errtbl != nil {
+		ctl.Log().Error("MiddlewareCache: error create bolt bucket for handlers caching", zap.ByteString("values", chBucketName), zap.Error(errtbl))
+	}
+
 	return &CacheMiddleware{
 		ctl:      ctl,
 		db:       db,
-		chBucket: []byte("ch"),
+		chBucket: chBucketName,
 	}
 }
 
@@ -40,45 +51,45 @@ func NewCacheMiddleware(ctl types.APICTL) *CacheMiddleware {
 func (cache *CacheMiddleware) Handler() types.MiddlewareHandler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+			panic("CacheMiddleware handler not implemented")
 		})
 	}
 }
 
 // CacheHandler MiddlewareCache http handler
-func (cache *CacheMiddleware) CacheHandler(urlKey string, httpKeys map[string]string, expires time.Duration) types.MiddlewareHandler {
-	errtbl := cache.db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(cache.chBucket)
-		return err
-	})
-	if errtbl != nil {
-		cache.ctl.Log().Error("MiddlewareCache: error create bolt bucket for handlers caching", zap.ByteString("values", cache.chBucket), zap.Error(errtbl))
-	}
-
+// urlKey: ["GET,POST", "/"]
+// httpKeys: var, head, token
+// {"var", "trm", "var":"id", "head": "Header-Key", "tokenUID": "tkn"}
+func (cache *CacheMiddleware) CacheHandler(urlKey []string, httpKeys map[string]string, expires time.Duration) types.MiddlewareHandler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			keys := []string{}
-			if strings.HasPrefix(r.URL.Path, urlKey) {
-				keys = append(keys, r.URL.Path)
+
+			if r.URL.Path == urlKey[1] && strings.Contains(urlKey[0], r.Method) {
+				keys = append(keys, r.Method, urlKey[1])
+			} else {
+				next.ServeHTTP(rw, r)
+				return
 			}
 
 			for k, v := range httpKeys {
 				_v := ""
 				switch k {
 				case "var":
-					_v = r.FormValue(v)
+					_v = utils.EscapeParam(r.FormValue(v))
 				case "head":
-					_v = r.Header.Get(v)
+					_v = utils.EscapeParam(r.Header.Get(v))
 				case "tokenUID":
 					_v = r.Context().Value(types.CTXUIDKey{}).(string)
 				}
 
 				if _v != "" {
-					keys = append(keys, _v)
+					keys = append(keys, v+_v)
 				}
 			}
 
 			if len(keys) > 0 {
-				key := []byte(strings.Join(keys, ";"))
+				key := []byte(strings.Join(keys, ""))
 				bval := cache.Get([]byte(key))
 				if bval != nil {
 					obj := middcachez.GetRootAsCacheHandlersObj(bval, 0)
@@ -183,21 +194,36 @@ func (cache *CacheMiddleware) writeCacheHandler(key []byte, status int, ContentT
 
 // LogInfo log all caching data
 func (cache *CacheMiddleware) LogInfo() {
-	cache.ctl.Log().Info("CacheMiddleware log DB:")
+	cache.ctl.Log().Debug("CacheMiddleware log DB:")
 
 	cache.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(cache.chBucket))
 		c := b.Cursor()
+		i := 1
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
 			//fmt.Println("row: ", "K", string(k), "V", string(v))
-			cache.ctl.Log().Info("row: ", zap.ByteString("Key", k))
+			cache.ctl.Log().Debug("row", zap.ByteString(strconv.Itoa(i), k))
+			i = i + 1
 		}
 		return nil
 	})
 }
 
+// Drop to drop cache bucket
+func (cache *CacheMiddleware) Drop() (err error) {
+	err = cache.db.Update(func(tx *bolt.Tx) error {
+		err := tx.DeleteBucket(cache.chBucket)
+		if err == nil {
+			_, err = tx.CreateBucketIfNotExists(cache.chBucket)
+			return err
+		}
+		return err
+	})
+	return
+}
+
 // Close end any pinding tasks
 func (cache *CacheMiddleware) Close(wg *sync.WaitGroup) {
-	//cache.LogInfo()
+	cache.LogInfo()
 	cache.db.Close()
 }
