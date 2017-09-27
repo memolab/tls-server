@@ -91,6 +91,8 @@ func validateString(val string, min int, max int, req bool, regkey string) error
 
 	if req && l == 0 {
 		return errReq
+	} else if !req && l == 0 {
+		return nil
 	}
 
 	if min > 0 && l < min {
@@ -114,6 +116,8 @@ func validateEmail(val string, req bool) error {
 
 	if req && l == 0 {
 		return errReq
+	} else if !req && l == 0 {
+		return nil
 	}
 
 	if !validateRegs["email"].MatchString(val) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"flag"
@@ -76,7 +77,7 @@ func main() {
 	signal.Notify(osCh, os.Interrupt, os.Kill)
 	go func() {
 		<-osCh
-		srv.Close()
+		srv.Shutdown(context.Background())
 	}()
 
 	ln, err := net.Listen("tcp", srv.Addr)
@@ -86,7 +87,7 @@ func main() {
 
 	fmt.Printf("STARTING...Listen https://%s\n", srv.Addr)
 
-	if err := srv.ServeTLS(tcpKeepAliveListener{ln.(*net.TCPListener)}, fmt.Sprintf("certs/%s/cert.pem", certsdir), fmt.Sprintf("certs/%s/key.pem", certsdir)); err != nil && err.Error() != "http: Server closed" {
+	if err := srv.ServeTLS(tcpKeepAliveListener{ln.(*net.TCPListener)}, fmt.Sprintf("certs/%s/cert.pem", certsdir), fmt.Sprintf("certs/%s/key.pem", certsdir)); err != nil && err != http.ErrServerClosed {
 		api.ShutdownAPI(err)
 		return
 	}
@@ -109,6 +110,6 @@ func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 		return
 	}
 	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(1 * time.Minute)
+	tc.SetKeepAlivePeriod(30 * time.Second)
 	return tc, nil
 }

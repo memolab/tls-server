@@ -13,6 +13,7 @@ func TestValidationStruct(t *testing.T) {
 		Username string `valid:"req,alphaNum, min=5,max=60"`
 		Email    string `valid:"req,email"`
 		Password string `valid:"req,alphaNumu, min=5,max=60"`
+		Other    string `valid:"alphaNumu, min=5,max=60"`
 	}{Email: "@m.com",
 		ID:       -1,
 		Username: "meomeo",
@@ -38,6 +39,10 @@ func TestValidationStruct(t *testing.T) {
 		t.Errorf("Expected error Password field")
 	} else if !strings.HasPrefix(errs["Password"], "is not a valid alphanumeric") {
 		t.Errorf("got %s, Expected has (is not a valid alphanumeric)", errs["Password"])
+	}
+
+	if errs["Other"] != "" {
+		t.Errorf("Expected empty")
 	}
 
 }
